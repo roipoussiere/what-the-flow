@@ -13,9 +13,6 @@
 
 	<body>
 		<div id="panel">
-			<label><input id="inverse-kinematics" type="checkbox" class="toggle"><span>Inverse<br>kinematics</span></label><br>
-			<label><input id="biological-constraints" type="checkbox" class="toggle" checked><span>Biological<br>constraints</span></label><br>
-
 			<input id="rot-z" type="radio" name="bones-transform" value="rot-z" checked/>
 			<label class="icon" for="rot-z"></label>
 			<input id="rot-x" type="radio" name="bones-transform" value="rot-x"/>
@@ -26,8 +23,8 @@
 			<label class="icon" for="mov-y"></label>
 
 			<br>
-			<button id="gp">Get posture</button><br>
-			<button id="sp">Set posture</button><br>
+			<button id="gp">Save posture</button><br>
+			<button id="sp">load posture</button><br>
 		</div>
 
 		<script src="posture-editor.js"></script>

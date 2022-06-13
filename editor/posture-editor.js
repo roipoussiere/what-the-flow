@@ -121,11 +121,9 @@ var mouse = new THREE.Vector2(),		// mouse 3D position
 	dragPoint = new THREE.Mesh(),		// point of grabbing
 	obj = undefined;					// currently selected body part
 
-var cbInverseKinematics = document.getElementById( 'inverse-kinematics' ),
-	cbBiologicalConstraints = document.getElementById( 'biological-constraints' ),
-	cbRotZ = document.getElementById( 'rot-z' ),
-	cbRotX = document.getElementById( 'rot-x' ),
+var cbRotX = document.getElementById( 'rot-x' ),
 	cbRotY = document.getElementById( 'rot-y' ),
+	cbRotZ = document.getElementById( 'rot-z' ),
 	cbMovY = document.getElementById( 'mov-y' ),
 	btnGetPosture = document.getElementById( 'gp' ),
 	btnSetPosture = document.getElementById( 'sp' );
@@ -244,45 +242,31 @@ function relativeTurn( joint, rotationalAngle, angle )
 
 	if( joint.biologicallyImpossibleLevel )
 	{
-		if( cbBiologicalConstraints.checked )
+		// there is a dedicated function to check biological possibility of joint
+		var oldImpossibility = joint.biologicallyImpossibleLevel();
+
+		joint[rotationalAngle] += angle;
+		joint.updateMatrix();
+		joint.updateWorldMatrix(true); // ! important, otherwise get's stuck
+
+		var newImpossibility = joint.biologicallyImpossibleLevel();
+
+		if( newImpossibility>EPS && newImpossibility>=oldImpossibility-EPS )
 		{
-			// there is a dedicated function to check biological possibility of joint
-			var oldImpossibility = joint.biologicallyImpossibleLevel();
-
-			joint[rotationalAngle] += angle;
-			joint.updateMatrix();
-			joint.updateWorldMatrix(true); // ! important, otherwise get's stuck
-
-			var newImpossibility = joint.biologicallyImpossibleLevel();
-
-			if( newImpossibility>EPS && newImpossibility>=oldImpossibility-EPS )
-			{
-				// undo rotation
-				joint[rotationalAngle] -= angle;
-				return;
-			}
+			// undo rotation
+			joint[rotationalAngle] -= angle;
+			return;
 		}
-		else
-		{
-			joint.biologicallyImpossibleLevel();
-			joint[rotationalAngle] += angle;
-		}
-		// keep the rotation, it is either possible, or improves impossible situation
-	}
-	else
-	{
+	} else {
 		// there is no dedicated function, test with individual rotation range
 
 		var val = joint[rotationalAngle]+angle,
 			min = joint.minRot[rotationalAngle],
 			max = joint.maxRot[rotationalAngle];
 
-		if( cbBiologicalConstraints.checked || min==max )
-		{
-			if( val<min-EPS && angle<0 ) return;
-			if( val>max+EPS && angle>0 ) return;
-			if( min == max ) return;
-		}
+		if( val<min-EPS && angle<0 ) return;
+		if( val>max+EPS && angle>0 ) return;
+		if( min == max ) return;
 
 		joint[rotationalAngle] = val;
 	}
@@ -366,23 +350,19 @@ function animate( time )
 	if( cbRotY.checked || elemNone&&mouseButton&0x4 ) gauge.rotation.set(Math.PI/2,0,-Math.PI/2);
 
 	var joint = cbMovY.checked ? model.body : obj;
-	do
+	for( var step = 5; step>0.1; step *= 0.75 )
 	{
-		for( var step = 5; step>0.1; step *= 0.75 )
-		{
-			if( cbRotZ.checked || elemNone&&(mouseButton&0x1) )
-				inverseKinematics( joint, 'z', step );
-			if( cbRotX.checked || elemNone&&(mouseButton&0x2) )
-				inverseKinematics( joint, 'x', step );
-			if( cbRotY.checked || elemNone&&(mouseButton&0x4) )
-				inverseKinematics( joint, 'y', step );
-			if( cbMovY.checked )
-				inverseKinematics( joint, '', step );
-		}
-
-		joint = joint.parentJoint;
+		if( cbRotZ.checked || elemNone&&(mouseButton&0x1) )
+			inverseKinematics( joint, 'z', step );
+		if( cbRotX.checked || elemNone&&(mouseButton&0x2) )
+			inverseKinematics( joint, 'x', step );
+		if( cbRotY.checked || elemNone&&(mouseButton&0x4) )
+			inverseKinematics( joint, 'y', step );
+		if( cbMovY.checked )
+			inverseKinematics( joint, '', step );
 	}
-	while( joint && !(joint instanceof Mannequin) && !(joint instanceof Pelvis) && !(joint instanceof Torso) && cbInverseKinematics.checked );
+
+	joint = joint.parentJoint;
 }
 
 function onMouseMove( event )
