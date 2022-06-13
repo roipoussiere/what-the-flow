@@ -11,7 +11,7 @@ var light = scene.children[0];
 	light.shadow.mapSize.width = Math.min( 4*1024, renderer.capabilities.maxTextureSize/2 );
 	light.shadow.mapSize.height = light.shadow.mapSize.width;
 	light.shadow.radius = 2;
-
+	
 var controls = new THREE.OrbitControls( camera, renderer.domElement );
 
 var model = new Male();
@@ -77,34 +77,33 @@ function gaugeTexture( size=256 )
 	return texture;
 }
 
-// name body parts and their motions
+// name body parts
 var names = [
-	['body','tilt','turn','bend'],
-	['pelvis','tilt','turn','bend'],
-	['torso','tilt','turn','bend'],
-	['neck','tilt','turn','nod'],
-	['head','tilt','turn','nod'],
-	['l_leg','straddle','turn','raise'],
-	['l_knee','','','bend'],
-	['l_ankle','tilt','turn','bend'],
-	['l_arm','straddle','turn','raise'],
-	['l_elbow','','','bend'],
-	['l_wrist','tilt','turn','bend'],
-	['l_fingers','','','bend'],
-	['l_tips','','','bend'],
-	['r_leg','straddle','turn','raise'],
-	['r_knee','','','bend'],
-	['r_ankle','tilt','turn','bend'],
-	['r_arm','straddle','turn','raise'],
-	['r_elbow','','','bend'],
-	['r_wrist','tilt','turn','bend'],
-	['r_fingers','','','bend'],
-	['r_tips','','','bend']
+	'body',
+	'pelvis',
+	'torso',
+	'neck',
+	'head',
+	'l_leg',
+	'l_knee',
+	'l_ankle',
+	'l_arm',
+	'l_elbow',
+	'l_wrist',
+	'l_fingers',
+	'l_tips',
+	'r_leg',
+	'r_knee',
+	'r_ankle',
+	'r_arm',
+	'r_elbow',
+	'r_wrist',
+	'r_fingers',
+	'r_tips'
 ];
 
-for( var nameData of names )
+for( var name of names )
 {
-	var name = nameData[0];
 	for( var part of model[name].children[0].children )
 		part.name = name;
 	for( var part of model[name].children[0].children[0].children )
@@ -112,7 +111,6 @@ for( var nameData of names )
 	if( model[name].children[0].children[1] )
 		for( var part of model[name].children[0].children[1].children )
 			part.name = name;
-	model[name].nameUI = {x:nameData[1], y:nameData[2], z:nameData[3]};
 }
 
 var mouse = new THREE.Vector2(),		// mouse 3D position
@@ -215,10 +213,6 @@ function onMouseDown( event )
 		if( name=='pelvis' ) name = 'body';
 
 		select( model[name] );
-
-		// document.getElementById('rot-x-name').innerHTML = model[name].nameUI.x||'N/A';
-		// document.getElementById('rot-y-name').innerHTML = model[name].nameUI.y||'N/A';
-		// document.getElementById('rot-z-name').innerHTML = model[name].nameUI.z||'N/A';
 
 		dragPoint.position.copy( obj.worldToLocal(intersects[0].point) );
 		obj.imageWrapper.add( dragPoint );
