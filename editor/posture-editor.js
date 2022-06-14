@@ -125,12 +125,12 @@ var mouse = new THREE.Vector2 (),		// Mouse 3D position
 	dragPoint = new THREE.Mesh (),		// Point of grabbing
 	obj = undefined;					// Currently selected body part
 
-var cbRotX = document.getElementById ('rot-x'),
-	cbRotY = document.getElementById ('rot-y'),
-	cbRotZ = document.getElementById ('rot-z'),
-	cbMovY = document.getElementById ('mov-y'),
-	btnGetPosture = document.getElementById ('gp'),
-	btnSetPosture = document.getElementById ('sp');
+var rb_x = document.getElementById ('rb-x'),
+	rb_y = document.getElementById ('rb-y'),
+	rb_z = document.getElementById ('rb-z'),
+	cb_move = document.getElementById ('cb-move'),
+	btn_save = document.getElementById ('btn-save'),
+	btn_load = document.getElementById ('btn-load');
 
 // Set up event handlers
 document.addEventListener ('mousedown', onMouseDown);
@@ -142,13 +142,13 @@ document.addEventListener ('touchend', onMouseUp);
 document.addEventListener ('touchcancel', onMouseUp);
 document.addEventListener ('touchmove', onMouseMove);
 
-cbRotZ.addEventListener ('click', processCheckBoxes);
-cbRotX.addEventListener ('click', processCheckBoxes);
-cbRotY.addEventListener ('click', processCheckBoxes);
-cbMovY.addEventListener ('click', processCheckBoxes);
+rb_x.addEventListener     ('click', processXyz);
+rb_y.addEventListener     ('click', processXyz);
+rb_z.addEventListener     ('click', processXyz);
+cb_move.addEventListener  ('click', onMoveClicked);
 
-btnGetPosture.addEventListener ('click', getPosture);
-btnSetPosture.addEventListener ('click', setPosture);
+btn_save.addEventListener ('click', getPosture);
+btn_load.addEventListener ('click', setPosture);
 
 controls.addEventListener ('start', () => {
 	renderer.setAnimationLoop (drawFrame);
@@ -161,32 +161,27 @@ window.addEventListener ('resize', () => {
 	renderer.render (scene, camera);
 });
 
-function processCheckBoxes (event) {
-	if (event) {
-		if (event.target.checked) {
-			cbRotX.checked = cbRotY.checked = cbRotY.checked = cbRotZ.checked = cbMovY.checked = false;
-			event.target.checked = true;
-		}
+function onMoveClicked (event) {
+	Array.from(document.getElementsByClassName('xyz')).forEach((rb) => {
+		rb.classList.toggle('move');
+	});
+}
 
-		if (touchInterface) {
-			event.target.checked = true;
-		}
-	}
-
-	if (!obj) {
+function processXyz (event) {
+	if ( ! obj) {
 		return;
 	}
 
-	if (cbRotZ.checked) {
-		obj.rotation.reorder ('XYZ');
-	}
-
-	if (cbRotX.checked) {
+	if (rb_x.checked) {
 		obj.rotation.reorder ('YZX');
 	}
 
-	if (cbRotY.checked) {
+	if (rb_y.checked) {
 		obj.rotation.reorder ('ZXY');
+	}
+
+	if (rb_z.checked) {
+		obj.rotation.reorder ('XYZ');
 	}
 }
 
@@ -238,22 +233,28 @@ function onMouseDown (event) {
 		dragPoint.position.copy (obj.worldToLocal (intersects[0].point));
 		obj.imageWrapper.add (dragPoint);
 
-		if (!cbMovY.checked) {
+		if ( ! cb_move.checked) {
 			obj.imageWrapper.add (gauge);
 		}
 
 		gauge.position.y = obj instanceof Ankle ? 2 : 0;
 
-		processCheckBoxes ();
+		processXyz ();
 	}
 
 	renderer.setAnimationLoop (drawFrame);
 }
 
 function relativeTurn (joint, rotationalAngle, angle) {
-	if (!rotationalAngle) {
+	if ( ! rotationalAngle) {
 		// It is translation, not rotation
-		joint.position.y += angle;
+		if ( rb_x.checked ) {
+			joint.position.x += angle;
+		} else if ( rb_y.checked ) {
+			joint.position.z += angle;
+		} else {
+			joint.position.y += angle;
+		}
 
 		return;
 	}
@@ -367,40 +368,40 @@ function inverseKinematics (joint, rotationalAngle, step) {
 
 function animate (time) {
 	// No selected object
-	if (!obj || !mouseButton) {
+	if ( ! obj || ! mouseButton) {
 		return;
 	}
 
-	let elemNone = !cbRotZ.checked && !cbRotX.checked && !cbRotY.checked && !cbMovY.checked,
+	let elemNone = ! rb_x.checked && ! rb_y.checked && ! rb_z.checked && ! cb_move.checked,
 		spinA = obj instanceof Ankle ? Math.PI / 2 : 0;
 
 	gauge.rotation.set (0, 0, -spinA);
 
-	if (cbRotX.checked || elemNone && mouseButton & 0x2) {
+	if (rb_x.checked || elemNone && mouseButton & 0x2) {
 		gauge.rotation.set (0, Math.PI / 2, 2 * spinA);
 	}
 
-	if (cbRotY.checked || elemNone && mouseButton & 0x4) {
+	if (rb_y.checked || elemNone && mouseButton & 0x4) {
 		gauge.rotation.set (Math.PI / 2, 0, -Math.PI / 2);
 	}
 
-	let joint = cbMovY.checked ? model.body : obj;
+	let joint = cb_move.checked ? model.body : obj;
 
 	for (let step = 5; step > 0.1; step *= 0.75) {
-		if (cbRotZ.checked || elemNone && mouseButton & 0x1) {
-			inverseKinematics (joint, 'z', step);
-		}
-
-		if (cbRotX.checked || elemNone && mouseButton & 0x2) {
-			inverseKinematics (joint, 'x', step);
-		}
-
-		if (cbRotY.checked || elemNone && mouseButton & 0x4) {
-			inverseKinematics (joint, 'y', step);
-		}
-
-		if (cbMovY.checked) {
+		if (cb_move.checked) {
 			inverseKinematics (joint, '', step);
+		} else {
+			if (rb_x.checked || elemNone && mouseButton & 0x2) {
+				inverseKinematics (joint, 'x', step);
+			}
+	
+			if (rb_y.checked || elemNone && mouseButton & 0x4) {
+				inverseKinematics (joint, 'y', step);
+			}
+	
+			if (rb_z.checked || elemNone && mouseButton & 0x1) {
+				inverseKinematics (joint, 'z', step);
+			}
 		}
 	}
 

@@ -13,18 +13,20 @@
 
 	<body>
 		<div id="panel">
-			<input id="rot-z" type="radio" name="bones-transform" value="rot-z" checked/>
-			<label class="icon" for="rot-z"></label>
-			<input id="rot-x" type="radio" name="bones-transform" value="rot-x"/>
-			<label class="icon" for="rot-x"></label>
-			<input id="rot-y" type="radio" name="bones-transform" value="rot-y"/>
-			<label class="icon" for="rot-y"></label>
-			<input id="mov-y" type="radio" name="bones-transform" value="mov-y"/>
-			<label class="icon" for="mov-y"></label>
+			<input id="rb-x" type="radio" name="xyz" value="x" checked/>
+			<label class="icon xyz" for="rb-x"></label>
+			<input id="rb-y" type="radio" name="xyz" value="y"/>
+			<label class="icon xyz" for="rb-y"></label>
+			<input id="rb-z" type="radio" name="xyz" value="z"/>
+			<label class="icon xyz" for="rb-z"></label>
 
-			<br>
-			<button id="gp">Save posture</button><br>
-			<button id="sp">load posture</button><br>
+			<input id="cb-move" type="checkbox"/>
+			<label class="icon" for="cb-move"></label>
+
+			<input id="btn-save" type="button"/>
+			<label class="icon" for="btn-save"></label>
+			<input id="btn-load" type="button"/>
+			<label class="icon" for="btn-load"></label>
 		</div>
 
 		<script src="posture-editor.js"></script>
