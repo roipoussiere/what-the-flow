@@ -1,9 +1,23 @@
 const EPS = 0.00001;
 
+var biological_constraints = true;
 var mouseInterface = false;
 var touchInterface = false;
 
 createScene ();
+
+scene.remove (light);
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+// PointLight and DirectionaLight make problems with older GPU
+var light = new THREE.SpotLight ('white', 0.5);
+light.position.set (0, 100, 50);
+light.penumbra = 1;
+light.shadow.mapSize.width = Math.min (4 * 1024, renderer.capabilities.maxTextureSize / 2);
+light.shadow.mapSize.height = light.shadow.mapSize.width;
+light.shadow.radius = 2;
+light.castShadow = true;
+scene.add (light);
 
 var controls = new THREE.OrbitControls (camera, renderer.domElement);
 
@@ -23,6 +37,7 @@ var gauge = new THREE.Mesh (
 		})
 	),
 	gaugeMaterial = new THREE.MeshBasicMaterial ({ 'color': 'navy' });
+
 gauge.add (new THREE.Mesh (new THREE.TorusBufferGeometry (10, 0.1, 8, 32, Math.PI / 2).rotateZ (Math.PI / 4), gaugeMaterial));
 gauge.add (new THREE.Mesh (new THREE.ConeBufferGeometry (0.7, 3, 6).translate (-10, 0, 0).
 	rotateZ (5 * Math.PI / 4), gaugeMaterial));
@@ -119,11 +134,11 @@ for (var name of names) {
 	}
 }
 
-var mouse = new THREE.Vector2 (),		// Mouse 3D position
-	mouseButton = undefined,			// Pressed mouse buttons
-	raycaster = new THREE.Raycaster (),	// Raycaster to grab body part
-	dragPoint = new THREE.Mesh (),		// Point of grabbing
-	obj = undefined;					// Currently selected body part
+var mouse = new THREE.Vector2 (),       // Mouse 3D position
+	mouseButton = undefined,            // Pressed mouse buttons
+	raycaster = new THREE.Raycaster (), // Raycaster to grab body part
+	dragPoint = new THREE.Mesh (),      // Point of grabbing
+	obj = undefined;                    // Currently selected body part
 
 var rb_x = document.getElementById ('rb-x'),
 	rb_y = document.getElementById ('rb-y'),
@@ -133,19 +148,19 @@ var rb_x = document.getElementById ('rb-x'),
 	btn_load = document.getElementById ('btn-load');
 
 // Set up event handlers
-document.addEventListener ('mousedown', onMouseDown);
-document.addEventListener ('mouseup', onMouseUp);
-document.addEventListener ('mousemove', onMouseMove);
+document.addEventListener ('mousedown',   onMouseDown);
+document.addEventListener ('mouseup',     onMouseUp);
+document.addEventListener ('mousemove',   onMouseMove);
 
-document.addEventListener ('touchstart', onMouseDown);
-document.addEventListener ('touchend', onMouseUp);
+document.addEventListener ('touchstart',  onMouseDown);
+document.addEventListener ('touchend',    onMouseUp);
 document.addEventListener ('touchcancel', onMouseUp);
-document.addEventListener ('touchmove', onMouseMove);
+document.addEventListener ('touchmove',   onMouseMove);
 
-rb_x.addEventListener     ('click', processXyz);
-rb_y.addEventListener     ('click', processXyz);
-rb_z.addEventListener     ('click', processXyz);
-cb_move.addEventListener  ('click', onMoveClicked);
+rb_z.addEventListener    ('click', processXyz);
+rb_x.addEventListener    ('click', processXyz);
+rb_y.addEventListener    ('click', processXyz);
+cb_move.addEventListener ('click', onMoveClicked);
 
 btn_save.addEventListener ('click', getPosture);
 btn_load.addEventListener ('click', setPosture);
@@ -153,8 +168,10 @@ btn_load.addEventListener ('click', setPosture);
 controls.addEventListener ('start', () => {
 	renderer.setAnimationLoop (drawFrame);
 });
+
 controls.addEventListener ('end', () => {
-	renderer.setAnimationLoop (null); renderer.render (scene, camera);
+	renderer.setAnimationLoop (null);
+	renderer.render (scene, camera);
 });
 
 window.addEventListener ('resize', () => {
@@ -165,11 +182,27 @@ function onMoveClicked (event) {
 	Array.from(document.getElementsByClassName('xyz')).forEach((rb) => {
 		rb.classList.toggle('move');
 	});
+	processXyz();
 }
 
 function processXyz (event) {
+	if (event) {
+		if (event.target.checked) {
+			// rb_x.checked = rb_y.checked = rb_y.checked = rb_z.checked = false;
+			event.target.checked = true;
+		}
+
+		if (touchInterface) {
+			event.target.checked = true;
+		}
+	}
+
 	if ( ! obj) {
 		return;
+	}
+
+	if (rb_z.checked) {
+		obj.rotation.reorder ('XYZ');
 	}
 
 	if (rb_x.checked) {
@@ -178,10 +211,6 @@ function processXyz (event) {
 
 	if (rb_y.checked) {
 		obj.rotation.reorder ('ZXY');
-	}
-
-	if (rb_z.checked) {
-		obj.rotation.reorder ('XYZ');
 	}
 }
 
@@ -245,53 +274,60 @@ function onMouseDown (event) {
 	renderer.setAnimationLoop (drawFrame);
 }
 
-function relativeTurn (joint, rotationalAngle, angle) {
+function relativeTurn (joint, rotationalAngle, value) {
 	if ( ! rotationalAngle) {
 		// It is translation, not rotation
-		if ( rb_x.checked ) {
-			joint.position.x += angle;
-		} else if ( rb_y.checked ) {
-			joint.position.z += angle;
-		} else {
-			joint.position.y += angle;
+		if (rb_x.checked) {
+			joint.position.x += value;
+		} else if (rb_y.checked) {
+			joint.position.z += value;
+		} else if (rb_z.checked) {
+			joint.position.y += value;
 		}
-
 		return;
 	}
 
 	if (joint.biologicallyImpossibleLevel) {
-		// There is a dedicated function to check biological possibility of joint
-		let oldImpossibility = joint.biologicallyImpossibleLevel ();
+		if (biological_constraints) {
+			// There is a dedicated function to check biological possibility of joint
+			let oldImpossibility = joint.biologicallyImpossibleLevel ();
 
-		joint[rotationalAngle] += angle;
-		joint.updateMatrix ();
-		joint.updateWorldMatrix (true); // ! important, otherwise get's stuck
+			joint[rotationalAngle] += value;
+			joint.updateMatrix ();
+			joint.updateWorldMatrix (true); // ! important, otherwise get's stuck
 
-		let newImpossibility = joint.biologicallyImpossibleLevel ();
+			let newImpossibility = joint.biologicallyImpossibleLevel ();
 
-		if (newImpossibility > EPS && newImpossibility >= oldImpossibility - EPS) {
-			// Undo rotation
-			joint[rotationalAngle] -= angle;
+			if (newImpossibility > EPS && newImpossibility >= oldImpossibility - EPS) {
+				// Undo rotation
+				joint[rotationalAngle] -= value;
 
-			return;
+				return;
+			}
+		} else {
+			joint.biologicallyImpossibleLevel ();
+			joint[rotationalAngle] += value;
 		}
+		// Keep the rotation, it is either possible, or improves impossible situation
 	} else {
 		// There is no dedicated function, test with individual rotation range
 
-		let val = joint[rotationalAngle] + angle,
+		let val = joint[rotationalAngle] + value,
 			min = joint.minRot[rotationalAngle],
 			max = joint.maxRot[rotationalAngle];
 
-		if (val < min - EPS && angle < 0) {
-			return;
-		}
+		if (biological_constraints || min == max) {
+			if (val < min - EPS && value < 0) {
+				return;
+			}
 
-		if (val > max + EPS && angle > 0) {
-			return;
-		}
+			if (val > max + EPS && value > 0) {
+				return;
+			}
 
-		if (min == max) {
-			return;
+			if (min == max) {
+				return;
+			}
 		}
 
 		joint[rotationalAngle] = val;
@@ -319,7 +355,7 @@ function kinematic2D (joint, rotationalAngle, angle, ignoreIfPositive) {
 	let distOriginal = mouse.distanceTo (screenPoint),
 		oldAngle = joint[rotationalAngle];
 
-	if (joint instanceof Head) {	// Head and neck
+	if (joint instanceof Head) { // Head and neck
 		oldParentAngle = joint.parentJoint[rotationalAngle];
 		relativeTurn (joint, rotationalAngle, angle / 2);
 		relativeTurn (joint.parentJoint, rotationalAngle, angle / 2);
@@ -342,7 +378,7 @@ function kinematic2D (joint, rotationalAngle, angle, ignoreIfPositive) {
 
 	joint[rotationalAngle] = oldAngle;
 
-	if (joint instanceof Head) {	// Head and neck
+	if (joint instanceof Head) { // Head and neck
 		joint.parentJoint[rotationalAngle] = oldParentAngle;
 	}
 
@@ -367,12 +403,14 @@ function inverseKinematics (joint, rotationalAngle, step) {
 }
 
 function animate (time) {
+	let inv_knm = false;
+
 	// No selected object
 	if ( ! obj || ! mouseButton) {
 		return;
 	}
 
-	let elemNone = ! rb_x.checked && ! rb_y.checked && ! rb_z.checked && ! cb_move.checked,
+	let elemNone = ! rb_z.checked && ! rb_x.checked && ! rb_y.checked && ! cb_move.checked,
 		spinA = obj instanceof Ankle ? Math.PI / 2 : 0;
 
 	gauge.rotation.set (0, 0, -spinA);
@@ -387,25 +425,31 @@ function animate (time) {
 
 	let joint = cb_move.checked ? model.body : obj;
 
-	for (let step = 5; step > 0.1; step *= 0.75) {
-		if (cb_move.checked) {
-			inverseKinematics (joint, '', step);
-		} else {
-			if (rb_x.checked || elemNone && mouseButton & 0x2) {
-				inverseKinematics (joint, 'x', step);
-			}
-	
-			if (rb_y.checked || elemNone && mouseButton & 0x4) {
-				inverseKinematics (joint, 'y', step);
-			}
-	
-			if (rb_z.checked || elemNone && mouseButton & 0x1) {
-				inverseKinematics (joint, 'z', step);
+	do {
+		for (let step = 5; step > 0.1; step *= 0.75) {
+			if ( cb_move.checked && obj.name === '') {
+				inverseKinematics (joint, '', step); // translate
+			} else {
+				if (rb_z.checked || elemNone && mouseButton & 0x1) {
+					inverseKinematics (joint, 'z', step);
+				}
+
+				if (rb_x.checked || elemNone && mouseButton & 0x2) {
+					inverseKinematics (joint, 'x', step);
+				}
+
+				if (rb_y.checked || elemNone && mouseButton & 0x4) {
+					inverseKinematics (joint, 'y', step);
+				}
 			}
 		}
-	}
 
-	joint = joint.parentJoint;
+		joint = joint.parentJoint;
+		inv_knm = false;
+		// do not work:
+		// inv_knm = cb_move.checked && obj.name !== '';
+	}
+	while (joint && ! (joint instanceof Mannequin) && ! (joint instanceof Pelvis) && ! (joint instanceof Torso) && inv_knm);
 }
 
 function onMouseMove (event) {
