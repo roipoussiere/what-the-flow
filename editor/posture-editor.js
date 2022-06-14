@@ -162,8 +162,8 @@ rb_x.addEventListener    ('click', processXyz);
 rb_y.addEventListener    ('click', processXyz);
 cb_move.addEventListener ('click', onMoveClicked);
 
-btn_save.addEventListener ('click', getPosture);
-btn_load.addEventListener ('click', setPosture);
+btn_save.addEventListener ('click', savePosture);
+btn_load.addEventListener ('click', loadPosture);
 
 controls.addEventListener ('start', () => {
 	renderer.setAnimationLoop (drawFrame);
@@ -478,12 +478,64 @@ function userInput (event) {
 	}
 }
 
-function getPosture () {
-	prompt ('The current posture is shown below. Copy it to the clipboard.', model.postureString);
+function savePosture () {
+	let posture = {
+		'pos': [ model.body.position.x, model.body.position.y, model.body.position.z ],
+		'body': model.body.posture,
+		'torso': model.torso.posture,
+		'head': model.head.posture,
+		'l_leg': model.l_leg.posture,
+		'l_knee': model.l_knee.posture,
+		'l_ankle': model.l_ankle.posture,
+		'r_leg': model.r_leg.posture,
+		'r_knee': model.r_knee.posture,
+		'r_ankle': model.r_ankle.posture,
+		'l_arm': model.l_arm.posture,
+		'l_elbow': model.l_elbow.posture,
+		'l_wrist': model.l_wrist.posture,
+		'l_fingers': model.l_fingers.posture,
+		'r_arm': model.r_arm.posture,
+		'r_elbow': model.r_elbow.posture,
+		'r_wrist': model.r_wrist.posture,
+		'r_fingers': model.r_fingers.posture
+	};
+	let pose = {
+		title: '',
+		aliases: [],
+		wtf_version: 0.1,
+		description: '',
+		activity: 'acroyoga',
+		keywords: [],
+		difficulty: 1,
+		author: '',
+		source: '',
+		camera: { pos: [ 0, 0, 0 ], rot: [ 0, 0, 0 ] },
+		posture: { base: posture, fly: {}, spot: {} },
+		comment: ''
+	};
+	let yaml_posture = YAML.stringify(pose, 3, 2);
+	downloadBlob(yaml_posture, 'posture.wtfp.yml');
 }
 
-function setPosture () {
-	let string = prompt ('Reset the posture to:', '{"version":6,"data":["0,[0,0,0],...]}');
+function downloadBlob(content, name = 'file.txt') {
+	const blobUrl = URL.createObjectURL(new Blob([ content ], { type : 'text/yaml' }));
+
+	const link = document.createElement("a");
+	link.href = blobUrl;
+	link.download = name;
+
+	document.body.appendChild(link);
+
+	link.dispatchEvent(
+		new MouseEvent('click', { bubbles: true, cancelable: true, view: window })
+	);
+
+	document.body.removeChild(link);
+}
+
+function loadPosture () {
+	let nativeObject = YAML.parse('foo: bar');
+	console.log(nativeObject);
 
 	if (string) {
 		let oldPosture = model.posture;
