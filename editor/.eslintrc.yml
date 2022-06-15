@@ -33,7 +33,7 @@ rules:
   no-multiple-empty-lines:        [ error, { max: 1 } ]
   array-bracket-newline:          [ error, consistent ]
   array-element-newline:          [ error, consistent, { multiline: true } ]
-  object-curly-newline:           [ error, { minProperties: 2 } ]
+  object-curly-newline:           [ error, { minProperties: 1 } ]
   function-paren-newline:         [ error, consistent ]
   function-call-argument-newline: [ error, consistent ]
   multiline-ternary:              off
@@ -45,10 +45,26 @@ rules:
     - { blankLine: never,  prev: 'return',                              next: '*' }
 
   # Spaces and indentation
+  space-infix-ops:       [ error ]
+  space-unary-ops:       [ error, { words: true, nonwords: true } ]
   space-before-blocks:   [ error, always ]
+  space-before-function-paren: [ error, never ]
+  space-in-brackets:     [ error, always ]
+  space-after-keywords:  [ error, always ]
+  space-in-parens:       [ error, always ]
   array-bracket-spacing: [ error, always ]
   object-curly-spacing:  [ error, always ]
-  func-call-spacing:     [ error, always ]
+  func-call-spacing:     [ error, never ]
   padded-blocks:         [ error, { blocks: never } ]
   indent:                [ error, tab ]
   no-tabs:               [ error, { allowIndentationTabs: true } ]
+  no-multi-spaces:
+    - error
+    - ignoreEOLComments: true
+      exceptions:
+        VariableDeclarator: true
+
+  # Miscenaeous
+  dot-location: [ error, property ]
+  key-spacing:  [ error, { align: value } ]
+  semi:  [ error, never ]
