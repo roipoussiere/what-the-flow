@@ -20,10 +20,18 @@ let mouse              = new THREE.Vector2(),   // Mouse 3D position
 createScene()
 
 var controls = new THREE.OrbitControls( camera, renderer.domElement ),
-	model    = new Mannequin(),
 	gauge    = createGauge()
+	models   = {
+		'base' : new Mannequin(),
+		'flyer': new Mannequin(),
+	}
 
-renameModelParts( model )
+models.base.body.position.x  -= 15
+models.flyer.body.position.x += 15
+models.base.body.position.y += 4
+models.flyer.body.position.y += 4
+
+renameModelsParts(models)
 setupEventHandlers()
 
 function createGauge() {
@@ -108,11 +116,8 @@ function gaugeTexture( size = 256 ) {
 	return texture
 }
 
-function renameModelParts( model ) {
-	model.l_tips = model.l_fingers.tips
-	model.r_tips = model.r_fingers.tips
-
-	let body_parts = [
+function renameModelsParts( models ) {
+	const body_parts = [
 		'body',
 		'pelvis',
 		'torso',
@@ -136,18 +141,24 @@ function renameModelParts( model ) {
 		'r_tips'
 	]
 
-	for ( let name of body_parts ) {
-		for ( var part of model[name].children[0].children ) {
-			part.name = name
-		}
+	for (let [model_name, model] of Object.entries(models)) {
+		model.label = model_name
+		model.l_tips = model.l_fingers.tips
+		model.r_tips = model.r_fingers.tips
 
-		for ( var part of model[name].children[0].children[0].children ) {
-			part.name = name
-		}
-
-		if ( model[name].children[0].children[1] ) {
-			for ( var part of model[name].children[0].children[1].children ) {
+		for ( let name of body_parts ) {
+			for ( var part of model[name].children[0].children ) {
 				part.name = name
+			}
+
+			for ( var part of model[name].children[0].children[0].children ) {
+				part.name = name
+			}
+
+			if ( model[name].children[0].children[1] ) {
+				for ( var part of model[name].children[0].children[1].children ) {
+					part.name = name
+				}
 			}
 		}
 	}
@@ -252,36 +263,42 @@ function onMouseDown( event ) {
 
 	raycaster.setFromCamera( mouse, camera )
 
-	let intersects = raycaster.intersectObject( model, true )
-
-	if ( intersects.length && ( intersects[0].object.name || intersects[0].object.parent.name ) ) {
-		controls.enabled = false
-
-		let name = intersects[0].object.name || intersects[0].object.parent.name
-
-		if ( name == 'neck' ) {
-			name = 'head'
+	let intersects
+	Object.values(models).forEach(model => {
+		intersects = raycaster.intersectObject( model, true )
+		if ( intersects.length && ( intersects[0].object.name || intersects[0].object.parent.name ) ) {
+			onModelClicked(model, intersects)
 		}
-
-		if ( name == 'pelvis' ) {
-			name = 'body'
-		}
-
-		select( model[name] )
-
-		drag_point.position.copy( selected_body_part.worldToLocal( intersects[0].point ) )
-		selected_body_part.imageWrapper.add( drag_point )
-
-		if ( ! cb_move.checked ) {
-			selected_body_part.imageWrapper.add( gauge )
-		}
-
-		gauge.position.y = selected_body_part instanceof Ankle ? 2 : 0
-
-		processXyz()
-	}
+	});
 
 	renderer.setAnimationLoop( drawFrame )
+}
+
+function onModelClicked(model, intersects) {
+	controls.enabled = false
+
+	let name = intersects[0].object.name || intersects[0].object.parent.name
+
+	if ( name == 'neck' ) {
+		name = 'head'
+	}
+
+	if ( name == 'pelvis' ) {
+		name = 'body'
+	}
+
+	select( model[name] )
+
+	drag_point.position.copy( selected_body_part.worldToLocal( intersects[0].point ) )
+	selected_body_part.imageWrapper.add( drag_point )
+
+	if ( ! cb_move.checked ) {
+		selected_body_part.imageWrapper.add( gauge )
+	}
+
+	gauge.position.y = selected_body_part instanceof Ankle ? 2 : 0
+
+	processXyz()
 }
 
 function relativeTurn( joint, rotationalAngle, value ) {
@@ -434,7 +451,8 @@ function animate( time ) {
 		gauge.rotation.set( Math.PI / 2, 0, - Math.PI / 2 )
 	}
 
-	let joint = cb_move.checked ? model.body : selected_body_part
+	// TODO
+	let joint = cb_move.checked ? selected_body_part.parent.body : selected_body_part
 
 	do {
 		for ( let step = 5; step > 0.1; step *= 0.75 ) {
@@ -493,24 +511,24 @@ function userInput( event ) {
 }
 
 const dict_keys = [
-	'pos',
-	'rot',
+	'position',
+	'rotation',
 	'torso',
 	'head',
-	'l_leg',
-	'l_knee',
-	'l_ankle',
-	'r_leg',
-	'r_knee',
-	'r_ankle',
-	'l_arm',
-	'l_elbow',
-	'l_wrist',
-	'l_fingers',
-	'r_arm',
-	'r_elbow',
-	'r_wrist',
-	'r_fingers'
+	'left leg',
+	'left knee',
+	'left ankle',
+	'right leg',
+	'right knee',
+	'right ankle',
+	'left arm',
+	'left elbow',
+	'left wrist',
+	'left fingers',
+	'right arm',
+	'right elbow',
+	'right wrist',
+	'right fingers'
 ]
 
 function postureToDict( posture ) {
@@ -534,11 +552,12 @@ function dictToPosture( posture_dict ) {
 }
 
 function savePosture() {
+	const first_model = models[Object.keys(models)[0]].posture.version;
 	let pose = {
 		'title':             '',
 		'aliases':           [],
 		'wtf_version':       0.1,
-		'mannequin_version': model.posture.version,
+		'mannequin_version': first_model,
 		'description':       '',
 		'activity':          'acroyoga',
 		'keywords':          [],
@@ -549,8 +568,8 @@ function savePosture() {
 			'pos': [ 0, 0, 0 ],
 			'rot': [ 0, 0, 0 ]
 		},
-		'posture': {
-			'base': postureToDict( model.posture.data ),
+		'posture': { // TODO
+			'base': postureToDict( first_model.posture.data ),
 			'fly':  {},
 			'spot': {}
 		},
@@ -588,7 +607,7 @@ function downloadBlob( content, name ) {
 }
 
 function loadPosture( file_load ) {
-	const char_loaded = 'base'
+	const model_to_load = 'base' // TODO
 
 	let reader = new FileReader()
 	let file = file_load.target.files[0]
@@ -614,15 +633,15 @@ function loadPosture( file_load ) {
 
 		let posture = {
 			'version': pose.mannequin_version,
-			'data':    dictToPosture( pose.posture[char_loaded] )
+			'data':    dictToPosture( pose.posture[model_to_load] )
 		}
 
-		let oldPosture = model.posture
+		let oldPosture = models[model_to_load].posture
 
 		try {
-			model.postureString = JSON.stringify( posture )
+			models[model_to_load].postureString = JSON.stringify( posture )
 		} catch ( error ) {
-			model.posture = oldPosture
+			models[model_to_load].posture = oldPosture
 
 			if ( error instanceof MannequinPostureVersionError ) {
 				alert( error.message )
