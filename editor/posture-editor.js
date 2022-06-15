@@ -145,7 +145,8 @@ var rb_x = document.getElementById ('rb-x'),
 	rb_z = document.getElementById ('rb-z'),
 	cb_move = document.getElementById ('cb-move'),
 	btn_save = document.getElementById ('btn-save'),
-	btn_load = document.getElementById ('btn-load');
+	btn_load = document.getElementById ('btn-load'),
+	file_load = document.getElementById('file-load');
 
 // Set up event handlers
 document.addEventListener ('mousedown',   onMouseDown);
@@ -157,13 +158,14 @@ document.addEventListener ('touchend',    onMouseUp);
 document.addEventListener ('touchcancel', onMouseUp);
 document.addEventListener ('touchmove',   onMouseMove);
 
-rb_z.addEventListener    ('click', processXyz);
-rb_x.addEventListener    ('click', processXyz);
-rb_y.addEventListener    ('click', processXyz);
-cb_move.addEventListener ('click', onMoveClicked);
+rb_z.addEventListener     ('click', processXyz);
+rb_x.addEventListener     ('click', processXyz);
+rb_y.addEventListener     ('click', processXyz);
+cb_move.addEventListener  ('click', onMoveClicked);
 
 btn_save.addEventListener ('click', savePosture);
-btn_load.addEventListener ('click', loadPosture);
+btn_load.addEventListener ('click', () => { file_load.click(); });
+file_load.addEventListener('change', loadPosture);
 
 controls.addEventListener ('start', () => {
 	renderer.setAnimationLoop (drawFrame);
@@ -478,49 +480,81 @@ function userInput (event) {
 	}
 }
 
+const dict_keys = [
+	'pos',
+	'rot',
+	'torso',
+	'head',
+	'l_leg',
+	'l_knee',
+	'l_ankle',
+	'r_leg',
+	'r_knee',
+	'r_ankle',
+	'l_arm',
+	'l_elbow',
+	'l_wrist',
+	'l_fingers',
+	'r_arm',
+	'r_elbow',
+	'r_wrist',
+	'r_fingers'
+];
+
+function postureToDict(posture) {
+	posture_dict = {};
+	posture.forEach((pos, index) => {
+		posture_dict[dict_keys[index]] = pos;
+	});
+	posture_dict['pos'] = [0, posture_dict['pos'], 0];
+	return posture_dict;
+}
+
+function dictToPosture(posture_dict) {
+	posture = [];
+	dict_keys.map( (key, index) => {
+		posture[index] = posture_dict[key];
+	});
+	posture[0] = posture[0][1];
+	return posture;
+}
+
 function savePosture () {
-	let posture = {
-		'pos': [ model.body.position.x, model.body.position.y, model.body.position.z ],
-		'body': model.body.posture,
-		'torso': model.torso.posture,
-		'head': model.head.posture,
-		'l_leg': model.l_leg.posture,
-		'l_knee': model.l_knee.posture,
-		'l_ankle': model.l_ankle.posture,
-		'r_leg': model.r_leg.posture,
-		'r_knee': model.r_knee.posture,
-		'r_ankle': model.r_ankle.posture,
-		'l_arm': model.l_arm.posture,
-		'l_elbow': model.l_elbow.posture,
-		'l_wrist': model.l_wrist.posture,
-		'l_fingers': model.l_fingers.posture,
-		'r_arm': model.r_arm.posture,
-		'r_elbow': model.r_elbow.posture,
-		'r_wrist': model.r_wrist.posture,
-		'r_fingers': model.r_fingers.posture
-	};
 	let pose = {
 		title: '',
 		aliases: [],
 		wtf_version: 0.1,
+		mannequin_version: model.posture.version,
 		description: '',
 		activity: 'acroyoga',
 		keywords: [],
 		difficulty: 1,
 		author: '',
 		source: '',
-		camera: { pos: [ 0, 0, 0 ], rot: [ 0, 0, 0 ] },
-		posture: { base: posture, fly: {}, spot: {} },
+		camera: {
+			pos: [ 0, 0, 0 ],
+			rot: [ 0, 0, 0 ]
+		},
+		posture: {
+			base: postureToDict(model.posture.data),
+			fly: {},
+			spot: {}
+		},
 		comment: ''
 	};
+
 	let yaml_posture = YAML.stringify(pose, 3, 2);
-	downloadBlob(yaml_posture, 'posture.wtfp.yml');
+	posture_name = window.prompt('Chose posture name:', 'my_posture');
+	downloadBlob(yaml_posture, posture_name + '.wtfp.yml');
 }
 
-function downloadBlob(content, name = 'file.txt') {
-	const blobUrl = URL.createObjectURL(new Blob([ content ], { type : 'text/yaml' }));
+function downloadBlob(content, name) {
+	const blobUrl = URL.createObjectURL(new Blob([ content ], {
+		type : 'text/yaml'
+	}));
 
-	const link = document.createElement("a");
+	const link = document.createElement('a');
+	link.style = 'display: none';
 	link.href = blobUrl;
 	link.download = name;
 
@@ -533,15 +567,35 @@ function downloadBlob(content, name = 'file.txt') {
 	document.body.removeChild(link);
 }
 
-function loadPosture () {
-	let nativeObject = YAML.parse('foo: bar');
-	console.log(nativeObject);
+function loadPosture (file_load) {
+	const char_loaded = 'base';
+	var reader = new FileReader();
+	var file = file_load.target.files[0];
 
-	if (string) {
+	if (! file.name.endsWith('wtfp.yml')) {
+		alert('Wrong file extension.');
+		return
+	} else if (file.type != 'application/x-yaml') {
+		alert('Wrong file type.');
+		return;
+	} else if (file.size > 5000) {
+		alert('File too big.');
+		return;
+	}
+
+	reader.readAsText(file, 'UTF-8');
+	reader.onload = readerEvent => {
+		let pose = YAML.parse(readerEvent.target.result);
+
+		let posture = {
+			'version': pose.mannequin_version,
+			'data': dictToPosture(pose.posture[char_loaded])
+		}
+
 		let oldPosture = model.posture;
 
 		try {
-			model.postureString = string;
+			model.postureString = JSON.stringify(posture);
 		} catch (error) {
 			model.posture = oldPosture;
 
@@ -550,10 +604,8 @@ function loadPosture () {
 			} else {
 				alert ('The provided posture was either invalid or impossible to understand.');
 			}
-
 			console.error (error);
 		}
-
 		renderer.render (scene, camera);
 	}
 }
