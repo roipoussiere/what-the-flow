@@ -1,48 +1,59 @@
-const EPS = 0.00001;
+const epsilon          = 0.00001,
+	  bio_constraints  = true,
+	  rb_x             = document.getElementById ('rb-x'),
+	  rb_y             = document.getElementById ('rb-y'),
+	  rb_z             = document.getElementById ('rb-z'),
+	  cb_move          = document.getElementById ('cb-move'),
+	  btn_save         = document.getElementById ('btn-save'),
+	  btn_load         = document.getElementById ('btn-load'),
+	  file_load        = document.getElementById ('file-load');
 
-var biological_constraints = true;
-var mouseInterface = false;
-var touchInterface = false;
-
+let mouse              = new THREE.Vector2 (),   // Mouse 3D position
+	pressed_mouse_btn  = undefined,              // Pressed mouse buttons
+	raycaster          = new THREE.Raycaster (), // Raycaster to grab body part
+	drag_point         = new THREE.Mesh (),      // Point of grabbing
+	selected_body_part = undefined,              // Currently selected body part
+	
+	mouse_interface    = false,
+	touch_interface    = false;
+	
 createScene ();
 
-scene.remove (light);
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+var controls = new THREE.OrbitControls (camera, renderer.domElement),
+	model    = new Mannequin (),
+	gauge    = createGauge();
 
-// PointLight and DirectionaLight make problems with older GPU
-var light = new THREE.SpotLight ('white', 0.5);
-light.position.set (0, 100, 50);
-light.penumbra = 1;
-light.shadow.mapSize.width = Math.min (4 * 1024, renderer.capabilities.maxTextureSize / 2);
-light.shadow.mapSize.height = light.shadow.mapSize.width;
-light.shadow.radius = 2;
-light.castShadow = true;
-scene.add (light);
+renameModelParts(model);
+setupEventHandlers();
 
-var controls = new THREE.OrbitControls (camera, renderer.domElement);
+function createGauge() {
+	let gauge = new THREE.Mesh (
+			new THREE.CircleBufferGeometry (10, 32, 9 / 4 * Math.PI, Math.PI / 2),
+			new THREE.MeshPhongMaterial ({
+				'side': THREE.DoubleSide,
+				'color': 'blue',
+				'transparent': true,
+				'opacity': 0.75,
+				'alphaMap': gaugeTexture ()
+			})
+		);
 
-var model = new Male ();
-model.l_tips = model.l_fingers.tips;
-model.r_tips = model.r_fingers.tips;
+	let gaugeMaterial = new THREE.MeshBasicMaterial ({
+		'color': 'navy'
+	});
 
-// Create gauge indicator
-var gauge = new THREE.Mesh (
-		new THREE.CircleBufferGeometry (10, 32, 9 / 4 * Math.PI, Math.PI / 2),
-		new THREE.MeshPhongMaterial ({
-			'side': THREE.DoubleSide,
-			'color': 'blue',
-			'transparent': true,
-			'opacity': 0.75,
-			'alphaMap': gaugeTexture ()
-		})
-	),
-	gaugeMaterial = new THREE.MeshBasicMaterial ({ 'color': 'navy' });
+	gauge.add (new THREE.Mesh (new THREE.TorusBufferGeometry (10, 0.1, 8, 32, Math.PI / 2)
+		.rotateZ (Math.PI / 4), gaugeMaterial));
 
-gauge.add (new THREE.Mesh (new THREE.TorusBufferGeometry (10, 0.1, 8, 32, Math.PI / 2).rotateZ (Math.PI / 4), gaugeMaterial));
-gauge.add (new THREE.Mesh (new THREE.ConeBufferGeometry (0.7, 3, 6).translate (-10, 0, 0).
-	rotateZ (5 * Math.PI / 4), gaugeMaterial));
-gauge.add (new THREE.Mesh (new THREE.ConeBufferGeometry (0.7, 3, 6).translate (10, 0, 0).
-	rotateZ (3 * Math.PI / 4), gaugeMaterial));
+	gauge.add (new THREE.Mesh (new THREE.ConeBufferGeometry (0.7, 3, 6)
+		.translate (-10, 0, 0)
+		.rotateZ (5 * Math.PI / 4), gaugeMaterial));
+
+	gauge.add (new THREE.Mesh (new THREE.ConeBufferGeometry (0.7, 3, 6)
+		.translate (10, 0, 0)
+		.rotateZ (3 * Math.PI / 4), gaugeMaterial));
+	return gauge;
+}
 
 function gaugeTexture (size = 256) {
 	let canvas = document.createElement ('canvas');
@@ -93,92 +104,83 @@ function gaugeTexture (size = 256) {
 	return texture;
 }
 
-// Name body parts
-var names = [
-	'body',
-	'pelvis',
-	'torso',
-	'neck',
-	'head',
-	'l_leg',
-	'l_knee',
-	'l_ankle',
-	'l_arm',
-	'l_elbow',
-	'l_wrist',
-	'l_fingers',
-	'l_tips',
-	'r_leg',
-	'r_knee',
-	'r_ankle',
-	'r_arm',
-	'r_elbow',
-	'r_wrist',
-	'r_fingers',
-	'r_tips'
-];
+function renameModelParts(model) {
+	model.l_tips = model.l_fingers.tips;
+	model.r_tips = model.r_fingers.tips;
 
-for (var name of names) {
-	for (var part of model[name].children[0].children) {
-		part.name = name;
-	}
+	var body_parts = [
+		'body',
+		'pelvis',
+		'torso',
+		'neck',
+		'head',
+		'l_leg',
+		'l_knee',
+		'l_ankle',
+		'l_arm',
+		'l_elbow',
+		'l_wrist',
+		'l_fingers',
+		'l_tips',
+		'r_leg',
+		'r_knee',
+		'r_ankle',
+		'r_arm',
+		'r_elbow',
+		'r_wrist',
+		'r_fingers',
+		'r_tips'
+	];
 
-	for (var part of model[name].children[0].children[0].children) {
-		part.name = name;
-	}
-
-	if (model[name].children[0].children[1]) {
-		for (var part of model[name].children[0].children[1].children) {
+	for (var name of body_parts) {
+		for (var part of model[name].children[0].children) {
 			part.name = name;
+		}
+
+		for (var part of model[name].children[0].children[0].children) {
+			part.name = name;
+		}
+
+		if (model[name].children[0].children[1]) {
+			for (var part of model[name].children[0].children[1].children) {
+				part.name = name;
+			}
 		}
 	}
 }
 
-var mouse = new THREE.Vector2 (),       // Mouse 3D position
-	mouseButton = undefined,            // Pressed mouse buttons
-	raycaster = new THREE.Raycaster (), // Raycaster to grab body part
-	dragPoint = new THREE.Mesh (),      // Point of grabbing
-	obj = undefined;                    // Currently selected body part
+function setupEventHandlers() {
+	document.addEventListener ('mousedown',   onMouseDown);
+	document.addEventListener ('mouseup',     onMouseUp);
+	document.addEventListener ('mousemove',   onMouseMove);
 
-var rb_x = document.getElementById ('rb-x'),
-	rb_y = document.getElementById ('rb-y'),
-	rb_z = document.getElementById ('rb-z'),
-	cb_move = document.getElementById ('cb-move'),
-	btn_save = document.getElementById ('btn-save'),
-	btn_load = document.getElementById ('btn-load'),
-	file_load = document.getElementById('file-load');
+	document.addEventListener ('touchstart',  onMouseDown);
+	document.addEventListener ('touchend',    onMouseUp);
+	document.addEventListener ('touchcancel', onMouseUp);
+	document.addEventListener ('touchmove',   onMouseMove);
 
-// Set up event handlers
-document.addEventListener ('mousedown',   onMouseDown);
-document.addEventListener ('mouseup',     onMouseUp);
-document.addEventListener ('mousemove',   onMouseMove);
+	rb_z.addEventListener     ('click', processXyz);
+	rb_x.addEventListener     ('click', processXyz);
+	rb_y.addEventListener     ('click', processXyz);
+	cb_move.addEventListener  ('click', onMoveClicked);
 
-document.addEventListener ('touchstart',  onMouseDown);
-document.addEventListener ('touchend',    onMouseUp);
-document.addEventListener ('touchcancel', onMouseUp);
-document.addEventListener ('touchmove',   onMouseMove);
+	btn_save.addEventListener ('click', savePosture);
+	btn_load.addEventListener ('click', () => { file_load.click(); });
+	file_load.addEventListener('change', loadPosture);
 
-rb_z.addEventListener     ('click', processXyz);
-rb_x.addEventListener     ('click', processXyz);
-rb_y.addEventListener     ('click', processXyz);
-cb_move.addEventListener  ('click', onMoveClicked);
+	controls.addEventListener ('start', () => {
+		renderer.setAnimationLoop (drawFrame);
+	});
 
-btn_save.addEventListener ('click', savePosture);
-btn_load.addEventListener ('click', () => { file_load.click(); });
-file_load.addEventListener('change', loadPosture);
+	controls.addEventListener ('end', () => {
+		renderer.setAnimationLoop (null);
+		renderer.render (scene, camera);
+	});
 
-controls.addEventListener ('start', () => {
-	renderer.setAnimationLoop (drawFrame);
-});
-
-controls.addEventListener ('end', () => {
-	renderer.setAnimationLoop (null);
-	renderer.render (scene, camera);
-});
-
-window.addEventListener ('resize', () => {
-	renderer.render (scene, camera);
-});
+	window.addEventListener ('resize', () => {
+		renderer.render (scene, camera);
+	});
+}
 
 function onMoveClicked (event) {
 	Array.from(document.getElementsByClassName('xyz')).forEach((rb) => {
@@ -194,31 +196,31 @@ function processXyz (event) {
 			event.target.checked = true;
 		}
 
-		if (touchInterface) {
+		if (touch_interface) {
 			event.target.checked = true;
 		}
 	}
 
-	if ( ! obj) {
+	if ( ! selected_body_part) {
 		return;
 	}
 
 	if (rb_z.checked) {
-		obj.rotation.reorder ('XYZ');
+		selected_body_part.rotation.reorder ('XYZ');
 	}
 
 	if (rb_x.checked) {
-		obj.rotation.reorder ('YZX');
+		selected_body_part.rotation.reorder ('YZX');
 	}
 
 	if (rb_y.checked) {
-		obj.rotation.reorder ('ZXY');
+		selected_body_part.rotation.reorder ('ZXY');
 	}
 }
 
 function onMouseUp (event) {
 	controls.enabled = true;
-	mouseButton = undefined;
+	pressed_mouse_btn = undefined;
 	deselect ();
 	renderer.setAnimationLoop (null);
 	renderer.render (scene, camera);
@@ -226,21 +228,21 @@ function onMouseUp (event) {
 
 function select (object) {
 	deselect ();
-	obj = object;
-	obj?.select (true);
+	selected_body_part = object;
+	selected_body_part?.select (true);
 }
 
 function deselect () {
 	gauge.parent?.remove (gauge);
-	obj?.select (false);
-	obj = undefined;
+	selected_body_part?.select (false);
+	selected_body_part = undefined;
 }
 
 function onMouseDown (event) {
 	userInput (event);
 
 	gauge.parent?.remove (gauge);
-	dragPoint.parent?.remove (dragPoint);
+	drag_point.parent?.remove (drag_point);
 
 	raycaster.setFromCamera (mouse, camera);
 
@@ -261,14 +263,14 @@ function onMouseDown (event) {
 
 		select (model[name]);
 
-		dragPoint.position.copy (obj.worldToLocal (intersects[0].point));
-		obj.imageWrapper.add (dragPoint);
+		drag_point.position.copy (selected_body_part.worldToLocal (intersects[0].point));
+		selected_body_part.imageWrapper.add (drag_point);
 
 		if ( ! cb_move.checked) {
-			obj.imageWrapper.add (gauge);
+			selected_body_part.imageWrapper.add (gauge);
 		}
 
-		gauge.position.y = obj instanceof Ankle ? 2 : 0;
+		gauge.position.y = selected_body_part instanceof Ankle ? 2 : 0;
 
 		processXyz ();
 	}
@@ -290,7 +292,7 @@ function relativeTurn (joint, rotationalAngle, value) {
 	}
 
 	if (joint.biologicallyImpossibleLevel) {
-		if (biological_constraints) {
+		if (bio_constraints) {
 			// There is a dedicated function to check biological possibility of joint
 			let oldImpossibility = joint.biologicallyImpossibleLevel ();
 
@@ -300,7 +302,7 @@ function relativeTurn (joint, rotationalAngle, value) {
 
 			let newImpossibility = joint.biologicallyImpossibleLevel ();
 
-			if (newImpossibility > EPS && newImpossibility >= oldImpossibility - EPS) {
+			if (newImpossibility > epsilon && newImpossibility >= oldImpossibility - epsilon) {
 				// Undo rotation
 				joint[rotationalAngle] -= value;
 
@@ -318,12 +320,12 @@ function relativeTurn (joint, rotationalAngle, value) {
 			min = joint.minRot[rotationalAngle],
 			max = joint.maxRot[rotationalAngle];
 
-		if (biological_constraints || min == max) {
-			if (val < min - EPS && value < 0) {
+		if (bio_constraints || min == max) {
+			if (val < min - epsilon && value < 0) {
 				return;
 			}
 
-			if (val > max + EPS && value > 0) {
+			if (val > max + epsilon && value > 0) {
 				return;
 			}
 
@@ -350,9 +352,9 @@ function kinematic2D (joint, rotationalAngle, angle, ignoreIfPositive) {
 		}
 	}
 
-	let screenPoint = new THREE.Vector3 ().copy (dragPoint.position);
+	let screenPoint = new THREE.Vector3 ().copy (drag_point.position);
 
-	screenPoint = obj.localToWorld (screenPoint).project (camera);
+	screenPoint = selected_body_part.localToWorld (screenPoint).project (camera);
 
 	let distOriginal = mouse.distanceTo (screenPoint),
 		oldAngle = joint[rotationalAngle];
@@ -368,8 +370,8 @@ function kinematic2D (joint, rotationalAngle, angle, ignoreIfPositive) {
 
 	joint.updateMatrixWorld (true);
 
-	screenPoint.copy (dragPoint.position);
-	screenPoint = obj.localToWorld (screenPoint).project (camera);
+	screenPoint.copy (drag_point.position);
+	screenPoint = selected_body_part.localToWorld (screenPoint).project (camera);
 
 	let distProposed = mouse.distanceTo (screenPoint),
 		dist = distOriginal - distProposed;
@@ -408,39 +410,39 @@ function animate (time) {
 	let inv_knm = false;
 
 	// No selected object
-	if ( ! obj || ! mouseButton) {
+	if ( ! selected_body_part || ! pressed_mouse_btn) {
 		return;
 	}
 
 	let elemNone = ! rb_z.checked && ! rb_x.checked && ! rb_y.checked && ! cb_move.checked,
-		spinA = obj instanceof Ankle ? Math.PI / 2 : 0;
+		spinA = selected_body_part instanceof Ankle ? Math.PI / 2 : 0;
 
 	gauge.rotation.set (0, 0, -spinA);
 
-	if (rb_x.checked || elemNone && mouseButton & 0x2) {
+	if (rb_x.checked || elemNone && pressed_mouse_btn & 0x2) {
 		gauge.rotation.set (0, Math.PI / 2, 2 * spinA);
 	}
 
-	if (rb_y.checked || elemNone && mouseButton & 0x4) {
+	if (rb_y.checked || elemNone && pressed_mouse_btn & 0x4) {
 		gauge.rotation.set (Math.PI / 2, 0, -Math.PI / 2);
 	}
 
-	let joint = cb_move.checked ? model.body : obj;
+	let joint = cb_move.checked ? model.body : selected_body_part;
 
 	do {
 		for (let step = 5; step > 0.1; step *= 0.75) {
-			if ( cb_move.checked && obj.name === '') {
+			if ( cb_move.checked && selected_body_part.name === '') {
 				inverseKinematics (joint, '', step); // translate
 			} else {
-				if (rb_z.checked || elemNone && mouseButton & 0x1) {
+				if (rb_z.checked || elemNone && pressed_mouse_btn & 0x1) {
 					inverseKinematics (joint, 'z', step);
 				}
 
-				if (rb_x.checked || elemNone && mouseButton & 0x2) {
+				if (rb_x.checked || elemNone && pressed_mouse_btn & 0x2) {
 					inverseKinematics (joint, 'x', step);
 				}
 
-				if (rb_y.checked || elemNone && mouseButton & 0x4) {
+				if (rb_y.checked || elemNone && pressed_mouse_btn & 0x4) {
 					inverseKinematics (joint, 'y', step);
 				}
 			}
@@ -455,7 +457,7 @@ function animate (time) {
 }
 
 function onMouseMove (event) {
-	if (obj) {
+	if (selected_body_part) {
 		userInput (event);
 	}
 }
@@ -464,17 +466,17 @@ function userInput (event) {
 	if (event instanceof MouseEvent) {
 		event.preventDefault ();
 
-		mouseInterface = true;
-		mouseButton = event.buttons || 0x1;
+		mouse_interface = true;
+		pressed_mouse_btn = event.buttons || 0x1;
 
 		mouse.x = event.clientX / window.innerWidth * 2 - 1;
 		mouse.y = -event.clientY / window.innerHeight * 2 + 1;
 	}
 
 	if (window.TouchEvent && event instanceof TouchEvent && event.touches.length == 1) {
-		mouseButton = 0x1;
+		pressed_mouse_btn = 0x1;
 
-		touchInterface = true;
+		touch_interface = true;
 		mouse.x = event.touches[0].clientX / window.innerWidth * 2 - 1;
 		mouse.y = -event.touches[0].clientY / window.innerHeight * 2 + 1;
 	}
