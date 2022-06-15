@@ -451,7 +451,6 @@ function animate( time ) {
 		gauge.rotation.set( Math.PI / 2, 0, - Math.PI / 2 )
 	}
 
-	// TODO
 	let joint = cb_move.checked ? selected_body_part.parent.body : selected_body_part
 
 	do {
@@ -515,20 +514,20 @@ const dict_keys = [
 	'rotation',
 	'torso',
 	'head',
-	'left leg',
-	'left knee',
-	'left ankle',
-	'right leg',
-	'right knee',
-	'right ankle',
-	'left arm',
-	'left elbow',
-	'left wrist',
-	'left fingers',
-	'right arm',
-	'right elbow',
-	'right wrist',
-	'right fingers'
+	'left_leg',
+	'left_knee',
+	'left_ankle',
+	'right_leg',
+	'right_knee',
+	'right_ankle',
+	'left_arm',
+	'left_elbow',
+	'left_wrist',
+	'left_fingers',
+	'right_arm',
+	'right_elbow',
+	'right_wrist',
+	'right_fingers'
 ]
 
 function postureToDict( posture ) {
@@ -553,6 +552,12 @@ function dictToPosture( posture_dict ) {
 
 function savePosture() {
 	const first_model = models[Object.keys(models)[0]].posture.version;
+
+	let postures = {}
+	for (const [model_name, model] of Object.entries(models)) {
+		postures[model_name] = postureToDict(model.posture.data)
+	}
+
 	let pose = {
 		'title':             '',
 		'aliases':           [],
@@ -568,11 +573,7 @@ function savePosture() {
 			'pos': [ 0, 0, 0 ],
 			'rot': [ 0, 0, 0 ]
 		},
-		'posture': { // TODO
-			'base': postureToDict( first_model.posture.data ),
-			'fly':  {},
-			'spot': {}
-		},
+		'postures': postures,
 		'comment': ''
 	}
 
@@ -607,8 +608,6 @@ function downloadBlob( content, name ) {
 }
 
 function loadPosture( file_load ) {
-	const model_to_load = 'base' // TODO
-
 	let reader = new FileReader()
 	let file = file_load.target.files[0]
 
@@ -631,25 +630,30 @@ function loadPosture( file_load ) {
 	reader.onload = ( readerEvent ) => {
 		let pose = YAML.parse( readerEvent.target.result )
 
-		let posture = {
-			'version': pose.mannequin_version,
-			'data':    dictToPosture( pose.posture[model_to_load] )
+		let postures = {}
+		for (const [model_name, posture] of Object.entries(pose.postures)) {
+			postures[model_name] = {
+				'version': pose.mannequin_version,
+				'data':    dictToPosture(posture)
+			}
 		}
 
-		let oldPosture = models[model_to_load].posture
+		for (const [model_name, model] of Object.entries(models)) {
+			let old_posture_data = postureToDict(model.posture.data)
+	
+			try {
+				model.postureString = JSON.stringify( postures[model_name] )
+			} catch ( error ) {
+				model.posture.data = old_posture_data
 
-		try {
-			models[model_to_load].postureString = JSON.stringify( posture )
-		} catch ( error ) {
-			models[model_to_load].posture = oldPosture
+				if ( error instanceof MannequinPostureVersionError ) {
+					alert( error.message )
+				} else {
+					alert( 'The provided posture was either invalid or impossible to understand.' )
+				}
 
-			if ( error instanceof MannequinPostureVersionError ) {
-				alert( error.message )
-			} else {
-				alert( 'The provided posture was either invalid or impossible to understand.' )
+				console.error( error )
 			}
-
-			console.error( error )
 		}
 
 		renderer.render( scene, camera )
