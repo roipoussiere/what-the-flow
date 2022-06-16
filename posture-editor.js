@@ -1,14 +1,14 @@
 'use strict'
 
-const BIO_CONSTRAINTS       = true,
+const BIO_CONSTRAINTS     = true,
 	EPSILON               = 0.00001,
 	WHAT_THE_FLOW_VERSION = 0.1
 
-const rb_x      = document.getElementById( 'rb-x' ),
+const rb_x    = document.getElementById( 'rb-x' ),
 	rb_y      = document.getElementById( 'rb-y' ),
 	rb_z      = document.getElementById( 'rb-z' ),
 	cb_move   = document.getElementById( 'cb-move' ),
-	btn_save  = document.getElementById( 'btn-save' ),
+	// btn_save  = document.getElementById( 'btn-save' ),
 	btn_load  = document.getElementById( 'btn-load' ),
 	file_load = document.getElementById( 'file-load' )
 
@@ -216,7 +216,7 @@ function setupEventHandlers() {
 	rb_y.addEventListener( 'click', processXyz )
 	cb_move.addEventListener( 'click', onMoveClicked )
 
-	btn_save.addEventListener( 'click', savePosture )
+	// btn_save.addEventListener( 'click', savePosture )
 	btn_load.addEventListener( 'click', () => {
 		file_load.click()
 	} )
@@ -290,6 +290,7 @@ function deselect() {
 	gauge.parent?.remove( gauge )
 	selected_body_part?.select( false )
 	selected_body_part = undefined
+	savePosture()
 }
 
 function onMouseDown( event ) {
@@ -554,52 +555,87 @@ function userInput( event ) {
 	}
 }
 
-const dict_keys = [
-	'position',
-	'rotation',
-	'torso',
-	'head',
-	'left_leg',
-	'left_knee',
-	'left_ankle',
-	'right_leg',
-	'right_knee',
-	'right_ankle',
-	'left_arm',
-	'left_elbow',
-	'left_wrist',
-	'left_fingers',
-	'right_arm',
-	'right_elbow',
-	'right_wrist',
-	'right_fingers'
+const body_parts = [
+	['position', 'p'],
+	['rotation', 'r'],
+	['torso', 't'],
+	['head', 'h'],
+	['left_leg', 'll'],
+	['left_knee', 'lk'],
+	['left_ankle', 'ln'],
+	['right_leg', 'rl'],
+	['right_knee', 'rk'],
+	['right_ankle', 'rn'],
+	['left_arm', 'la'],
+	['left_elbow', 'le'],
+	['left_wrist', 'lw'],
+	['left_fingers', 'lf'],
+	['right_arm', 'ra'],
+	['right_elbow', 're'],
+	['right_wrist', 'rw'],
+	['right_fingers', 'rf']
 ]
 
-function postureToDict( posture ) {
+function postureToDict( posture, short_ids ) {
 	let posture_dict = {}
 
-	posture.forEach( ( posture, pos_index ) => {
-		posture_dict[dict_keys[pos_index]] = posture
+	body_parts.forEach( ( part_keys, part_index ) => {
+		let part_key = part_keys[short_ids ? 1 : 0]
+		posture_dict[part_key] = posture[part_index]
 	} )
 
 	return posture_dict
 }
 
-function dictToPosture( posture_dict ) {
+function dictToPosture( posture_dict, short_ids ) {
 	let posture = []
 
-	dict_keys.map( ( key, index ) => {
-		posture[index] = posture_dict[key]
-	} )
+	body_parts.forEach( ( part_keys, part_index ) => {
+		let part_key = part_keys[short_ids ? 1 : 0]
+		posture[part_index] = posture_dict[part_key]
+	})
 
 	return posture
+}
+
+function poseToUrlString(posture) {
+	let postures_str = {}
+	for ( const [ model_name, posture_dict ] of Object.entries( posture.postures ) ) {
+
+		let posture_dict_short_ids = {}		
+		body_parts.forEach( part_keys => {
+			posture_dict_short_ids[part_keys[1]] = posture_dict[part_keys[0]]
+		})
+	
+		postures_str[model_name] = JSON.stringify(posture_dict_short_ids)
+			.replaceAll(',"', ';')
+			.replaceAll('"', '')
+			.replaceAll('{', '')
+			.replaceAll('}', '')
+			.replaceAll('[', '')
+			.replaceAll(']', '')
+			.replaceAll(':', '!')
+	}
+
+	return encodeURI(
+		JSON.stringify(postures_str)
+		.replaceAll(',"', '&')
+		.replaceAll('"', '')
+		.replaceAll('{', '')
+		.replaceAll('}', '')
+		.replaceAll(':', '=')
+		.replaceAll('!', ':')
+	)
+}
+
+function urlStringToPosturesDict(url_string) {
 }
 
 function savePosture() {
 	let postures = {}
 
 	for ( const [ model_name, model ] of Object.entries( models ) ) {
-		postures[model_name] = postureToDict( model.posture.data )
+		postures[model_name] = postureToDict( model.posture.data, false )
 		const pos = model.body.position
 
 		postures[model_name].position = [
@@ -628,13 +664,15 @@ function savePosture() {
 		'comment': ''
 	}
 
-	let yaml_posture = YAML.stringify( pose, 3, 2 )
+	let new_url = window.location.pathname + '?' + poseToUrlString(pose)
+	window.history.pushState({}, '', new_url);
+	// let yaml_posture = YAML.stringify( pose, 3, 2 )
 
-	const posture_name = window.prompt( 'Chose posture name:', 'my_posture' )
+	// const posture_name = window.prompt( 'Chose posture name:', 'my_posture' )
 
-	if ( posture_name ) {
-		downloadBlob( yaml_posture, `${posture_name}.wtfp.yml` )
-	}
+	// if ( posture_name ) {
+	// 	downloadBlob( yaml_posture, `${posture_name}.wtfp.yml` )
+	// }
 }
 
 function downloadBlob( content, name ) {
@@ -689,12 +727,11 @@ function loadPosture( file_load ) {
 
 			let mannequin_posture = {
 				'version': pose.mannequin_version,
-				'data':    dictToPosture( loaded_posture )
+				'data':    dictToPosture( loaded_posture, false )
 			}
 
 			mannequin_posture.data[0] = loaded_posture.position[1]
-
-			let old_posture_data = postureToDict( model.posture.data )
+			let old_posture_data = postureToDict( model.posture.data, false )
 
 			try {
 				model.postureString = JSON.stringify( mannequin_posture )
