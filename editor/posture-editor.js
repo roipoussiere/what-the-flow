@@ -1,21 +1,22 @@
-const epsilon          = 0.00001,
-	  bio_constraints  = true,
-	  rb_x             = document.getElementById( 'rb-x' ),
-	  rb_y             = document.getElementById( 'rb-y' ),
-	  rb_z             = document.getElementById( 'rb-z' ),
-	  cb_move          = document.getElementById( 'cb-move' ),
-	  btn_save         = document.getElementById( 'btn-save' ),
-	  btn_load         = document.getElementById( 'btn-load' ),
-	  file_load        = document.getElementById( 'file-load' )
+const WHAT_THE_FLOW_VERSION = 0.1;
+	  EPSILON               = 0.00001,
+	  BIO_CONSTRAINTS       = true
 
-let mouse              = new THREE.Vector2(),   // Mouse 3D position
-	pressed_mouse_btn,                          // Pressed mouse buttons
-	raycaster          = new THREE.Raycaster(), // Raycaster to grab body part
-	drag_point         = new THREE.Mesh(),      // Point of grabbing
-	selected_body_part,                         // Currently selected body part
+const rb_x            = document.getElementById( 'rb-x' ),
+	  rb_y            = document.getElementById( 'rb-y' ),
+	  rb_z            = document.getElementById( 'rb-z' ),
+	  cb_move         = document.getElementById( 'cb-move' ),
+	  btn_save        = document.getElementById( 'btn-save' ),
+	  btn_load        = document.getElementById( 'btn-load' ),
+	  file_load       = document.getElementById( 'file-load' )
 
-	mouse_interface    = false,
-	touch_interface    = false
+let mouse             = new THREE.Vector2(),   // Mouse 3D position
+	pressed_mouse_btn,                         // Pressed mouse buttons
+	raycaster         = new THREE.Raycaster(), // Raycaster to grab body part
+	drag_point        = new THREE.Mesh(),      // Point of grabbing
+	selected_body_part,                        // Currently selected body part
+	mouse_interface   = false,
+	touch_interface   = false
 
 createScene()
 
@@ -319,7 +320,7 @@ function relativeTurn( joint, rotationalAngle, value ) {
 	}
 
 	if ( joint.biologicallyImpossibleLevel ) {
-		if ( bio_constraints ) {
+		if ( BIO_CONSTRAINTS ) {
 			// There is a dedicated function to check biological possibility of joint
 			let oldImpossibility = joint.biologicallyImpossibleLevel()
 
@@ -329,7 +330,7 @@ function relativeTurn( joint, rotationalAngle, value ) {
 
 			let newImpossibility = joint.biologicallyImpossibleLevel()
 
-			if ( newImpossibility > epsilon && newImpossibility >= oldImpossibility - epsilon ) {
+			if ( newImpossibility > EPSILON && newImpossibility >= oldImpossibility - EPSILON ) {
 				// Undo rotation
 				joint[rotationalAngle] -= value
 
@@ -347,12 +348,12 @@ function relativeTurn( joint, rotationalAngle, value ) {
 			min = joint.minRot[rotationalAngle],
 			max = joint.maxRot[rotationalAngle]
 
-		if ( bio_constraints || min == max ) {
-			if ( val < min - epsilon && value < 0 ) {
+		if ( BIO_CONSTRAINTS || min == max ) {
+			if ( val < min - EPSILON && value < 0 ) {
 				return
 			}
 
-			if ( val > max + epsilon && value > 0 ) {
+			if ( val > max + EPSILON && value > 0 ) {
 				return
 			}
 
@@ -535,8 +536,8 @@ const dict_keys = [
 
 function postureToDict( posture ) {
 	posture_dict = {}
-	posture.forEach( ( pos, index ) => {
-		posture_dict[dict_keys[index]] = pos
+	posture.forEach( ( posture, pos_index ) => {
+		posture_dict[dict_keys[pos_index]] = posture
 	} )
 	return posture_dict
 }
@@ -560,10 +561,10 @@ function savePosture() {
 	let pose = {
 		'title':             '',
 		'aliases':           [],
-		'wtf_version':       0.1,
-		'mannequin_version': first_model,
+		'wtf_version':       WHAT_THE_FLOW_VERSION,
+		'mannequin_version': MANNEQUIN_POSTURE_VERSION,
 		'description':       '',
-		'activity':          'acroyoga',
+		'activity':          '',
 		'keywords':          [],
 		'difficulty':        1,
 		'author':            '',
