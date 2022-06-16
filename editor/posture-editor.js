@@ -293,7 +293,7 @@ function onModelClicked( model, intersects ) {
 		name = 'head'
 	}
 
-	if ( name == 'pelvis' ) {
+	if ( name == 'pelvis' || cb_move.checked ) {
 		name = 'body'
 	}
 
@@ -462,12 +462,18 @@ function animate( time ) {
 		gauge.rotation.set( Math.PI / 2, 0, - Math.PI / 2 )
 	}
 
-	let joint = cb_move.checked ? selected_body_part.parent.body : selected_body_part
+	// let selected_model = selected_body_part
+	// while ( ! selected_model.label) {
+	// 	selected_model = selected_model.parent
+	// }
+	// let joint = cb_move.checked ? selected_model : selected_body_part
+
+	let joint = selected_body_part
 
 	do {
 		for ( let step = 5; step > 0.1; step *= 0.75 ) {
-			if ( cb_move.checked && selected_body_part.name === '' ) {
-				inverseKinematics( joint, '', step ) // Translate
+			if ( cb_move.checked ) {
+					inverseKinematics( joint, '', step ) // Translate
 			} else {
 				if ( rb_z.checked || elemNone && pressed_mouse_btn & 0x1 ) {
 					inverseKinematics( joint, 'z', step )
@@ -486,10 +492,7 @@ function animate( time ) {
 		joint = joint.parentJoint
 		inv_knm = false
 
-		/*
-		 * Do not work:
-		 * inv_knm = cb_move.checked && obj.name !== '';
-		 */
+		// inv_knm = cb_move.checked && obj.name !== ''; // do not work
 	}
 	while ( joint &&
 		! ( joint instanceof Mannequin ) &&
