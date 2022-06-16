@@ -26,11 +26,7 @@ var controls = new THREE.OrbitControls( camera, renderer.domElement ),
 		'flyer': new Mannequin(),
 	}
 
-models.base.body.position.x  -= 15
-models.flyer.body.position.x += 15
-models.base.body.position.y += 4
-models.flyer.body.position.y += 4
-
+setInitialPosition(models)
 renameModelsParts(models)
 setupEventHandlers()
 
@@ -114,6 +110,13 @@ function gaugeTexture( size = 256 ) {
 	texture.repeat.set( 1, 1 )
 
 	return texture
+}
+
+function setInitialPosition(models) {
+	models.base.body.position.x  -= 15
+	models.flyer.body.position.x += 15
+	models.base.body.position.y  += 4
+	models.flyer.body.position.y += 4
 }
 
 function renameModelsParts( models ) {
@@ -535,8 +538,6 @@ function postureToDict( posture ) {
 	posture.forEach( ( pos, index ) => {
 		posture_dict[dict_keys[index]] = pos
 	} )
-	posture_dict.pos = [ 0, posture_dict.pos, 0 ]
-
 	return posture_dict
 }
 
@@ -545,17 +546,15 @@ function dictToPosture( posture_dict ) {
 	dict_keys.map( ( key, index ) => {
 		posture[index] = posture_dict[key]
 	} )
-	posture[0] = posture[0][1]
-
 	return posture
 }
 
 function savePosture() {
-	const first_model = models[Object.keys(models)[0]].posture.version;
-
 	let postures = {}
 	for (const [model_name, model] of Object.entries(models)) {
 		postures[model_name] = postureToDict(model.posture.data)
+		const pos = model.body.position
+		postures[model_name].position = [ +(pos.x).toFixed(1), +(pos.y).toFixed(1), +(pos.z).toFixed(1) ]
 	}
 
 	let pose = {
@@ -630,19 +629,22 @@ function loadPosture( file_load ) {
 	reader.onload = ( readerEvent ) => {
 		let pose = YAML.parse( readerEvent.target.result )
 
-		let postures = {}
-		for (const [model_name, posture] of Object.entries(pose.postures)) {
-			postures[model_name] = {
-				'version': pose.mannequin_version,
-				'data':    dictToPosture(posture)
-			}
-		}
-
 		for (const [model_name, model] of Object.entries(models)) {
+			const loaded_posture = pose.postures[model_name]
+
+			let mannequin_posture = {
+				'version': pose.mannequin_version,
+				'data':    dictToPosture(loaded_posture)
+			}
+			mannequin_posture.data[0] = loaded_posture.position[1]
+
 			let old_posture_data = postureToDict(model.posture.data)
-	
+
 			try {
-				model.postureString = JSON.stringify( postures[model_name] )
+				model.postureString = JSON.stringify( mannequin_posture )
+				model.body.position.x = loaded_posture.position[0]
+				model.body.position.y = loaded_posture.position[1]
+				model.body.position.z = loaded_posture.position[2]
 			} catch ( error ) {
 				model.posture.data = old_posture_data
 
