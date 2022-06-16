@@ -7,10 +7,10 @@ const BIO_CONSTRAINTS     = true,
 const rb_x    = document.getElementById( 'rb-x' ),
 	rb_y      = document.getElementById( 'rb-y' ),
 	rb_z      = document.getElementById( 'rb-z' ),
-	cb_move   = document.getElementById( 'cb-move' )
-	// btn_save  = document.getElementById( 'btn-save' ),
-	// btn_load  = document.getElementById( 'btn-load' ),
-	// file_load = document.getElementById( 'file-load' )
+	cb_move   = document.getElementById( 'cb-move' ),
+	btn_save  = document.getElementById( 'btn-save' ),
+	btn_load  = document.getElementById( 'btn-load' ),
+	file_load = document.getElementById( 'file-load' )
 
 let mouse           = new THREE.Vector2(),   // Mouse 3D position
 	pressed_mouse_btn,                         // Pressed mouse buttons
@@ -217,11 +217,11 @@ function setupEventHandlers() {
 	rb_y.addEventListener( 'click', processXyz )
 	cb_move.addEventListener( 'click', onMoveClicked )
 
-	// btn_save.addEventListener( 'click', savePose )
-	// btn_load.addEventListener( 'click', () => {
-	// 	file_load.click()
-	// } )
-	// file_load.addEventListener( 'change', loadPoseFile )
+	btn_save.addEventListener( 'click', savePose )
+	btn_load.addEventListener( 'click', () => {
+		file_load.click()
+	} )
+	file_load.addEventListener( 'change', loadPoseFile )
 
 	controls.addEventListener( 'start', () => {
 		renderer.setAnimationLoop( drawFrame )
