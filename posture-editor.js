@@ -23,13 +23,8 @@ createScene()
 
 var controls = new THREE.OrbitControls( camera, renderer.domElement ),
 	gauge    = createGauge(),
-	models   = {
-		'base':  new Mannequin(),
-		'flyer': new Mannequin()
-	}
+	models   = {}
 
-setInitialPosition( models )
-renameModelsParts( models )
 setupEventHandlers()
 
 function createGauge() {
@@ -117,40 +112,44 @@ function gaugeTexture( size = 256 ) {
 	return texture
 }
 
-function setInitialPosition( models ) {
-	// base
-	models.base.body.position.y = -25
+function initModels() {
+	let base = new Mannequin()
 
-	models.base.body.bend = 0
-	models.base.body.tilt = -90
-	models.base.body.turn = 0
+	base.body.position.y = -25
 
-	models.base.l_leg.turn  = -3
-	models.base.l_leg.raise = 90
-	models.base.r_leg.turn  = -3
-	models.base.r_leg.raise = 90
+	base.body.bend = 0
+	base.body.tilt = -90
+	base.body.turn = 0
 
-	models.base.l_arm.raise = -10
-	models.base.r_arm.raise = -10
+	base.l_leg.turn  = -3
+	base.l_leg.raise = 90
+	base.r_leg.turn  = -3
+	base.r_leg.raise = 90
 
-	models.base.l_elbow.bend = 11
-	models.base.r_elbow.bend = 11
+	base.l_arm.raise = -10
+	base.r_arm.raise = -10
 
-	models.base.l_wrist.turn = -90
-	models.base.r_wrist.turn = -90
-	models.base.l_wrist.tilt = -10
-	models.base.r_wrist.tilt = 10
+	base.l_elbow.bend = 11
+	base.r_elbow.bend = 11
 
-	// flyer
-	models.flyer.body.position.x = 3
-	models.flyer.body.position.y = 6
+	base.l_wrist.turn = -90
+	base.r_wrist.turn = -90
+	base.l_wrist.tilt = -10
+	base.r_wrist.tilt = 10
 
-	models.flyer.body.bend = 90
-	models.flyer.body.tilt = -90
-	models.flyer.body.turn = 180
+	let flyer = new Mannequin()
 
-	models.flyer.l_ankle.bend = -55
-	models.flyer.r_ankle.bend = -55
+	flyer.body.position.x = 3
+	flyer.body.position.y = 6
+
+	flyer.body.bend = 90
+	flyer.body.tilt = -90
+	flyer.body.turn = 180
+
+	flyer.l_ankle.bend = -55
+	flyer.r_ankle.bend = -55
+
+	return { base: base, flyer: flyer }
 }
 
 function renameModelsParts( models ) {
@@ -202,6 +201,8 @@ function renameModelsParts( models ) {
 }
 
 function setupEventHandlers() {
+	window.addEventListener( 'load', onPageLoad )
+
 	document.addEventListener( 'mousedown', onMouseDown )
 	document.addEventListener( 'mouseup', onMouseUp )
 	document.addEventListener( 'mousemove', onMouseMove )
@@ -220,7 +221,7 @@ function setupEventHandlers() {
 	btn_load.addEventListener( 'click', () => {
 		file_load.click()
 	} )
-	file_load.addEventListener( 'change', loadPosture )
+	file_load.addEventListener( 'change', loadPoseFile )
 
 	controls.addEventListener( 'start', () => {
 		renderer.setAnimationLoop( drawFrame )
@@ -234,6 +235,27 @@ function setupEventHandlers() {
 	window.addEventListener( 'resize', () => {
 		renderer.render( scene, camera )
 	} )
+}
+
+function onPageLoad() {
+	const string_url = window.location.search.substring(1)
+	const params = new URLSearchParams(string_url).entries();
+
+	let pose = { mannequin_version: 6, postures: {} } // TODO: parse mnq version
+
+	for(const [model_name, posture_url_string] of params) {
+		let posture_str = '{"' + posture_url_string
+			.replaceAll(':', '":[')
+			.replaceAll(';', '],"') + ']}'
+
+		let posture = JSON.parse(posture_str)
+		pose.postures[model_name] = {}
+		body_parts.forEach( part_keys => {
+			pose.postures[model_name][part_keys[0]] = posture[part_keys[1]]
+		})
+	}
+
+	loadPose(pose)
 }
 
 function onMoveClicked( event ) {
@@ -699,9 +721,48 @@ function downloadBlob( content, name ) {
 	document.body.removeChild( link )
 }
 
-function loadPosture( file_load ) {
+function loadPose( pose ) {
+	// console.log(pose)
+	if ( ! pose || ! pose.postures || Object.keys(pose.postures).length === 0 ) {
+		models = initModels()
+	} else {
+		models = {}
+		for ( const [ model_name, loaded_posture ] of Object.entries( pose.postures ) ) {
+
+			let mannequin_posture = {
+				'version': pose.mannequin_version,
+				'data':    dictToPosture( loaded_posture, false )
+			}
+
+			mannequin_posture.data[0] = loaded_posture.position[1]
+
+			try {
+				let mannequin = new Mannequin()	
+				mannequin.postureString = JSON.stringify( mannequin_posture )
+				mannequin.body.position.x = loaded_posture.position[0]
+				mannequin.body.position.y = loaded_posture.position[1]
+				mannequin.body.position.z = loaded_posture.position[2]
+
+				models[model_name] = mannequin
+			} catch ( error ) {
+				if ( error instanceof MannequinPostureVersionError ) {
+					alert( error.message )
+				} else {
+					alert( 'The provided posture was either invalid or impossible to understand.' )
+				}
+
+				console.error( error )
+			}
+		}
+	}
+
+	renameModelsParts( models )
+	renderer.render( scene, camera )
+}
+
+function loadPoseFile( pose_file ) {
 	let reader = new FileReader()
-	let file = file_load.target.files[0]
+	let file = pose_file.target.files[0]
 
 	if ( ! file.name.endsWith( 'wtfp.yml' ) ) {
 		alert( 'Wrong file extension.' )
@@ -720,37 +781,6 @@ function loadPosture( file_load ) {
 	reader.readAsText( file, 'UTF-8' )
 
 	reader.onload = ( readerEvent ) => {
-		let pose = YAML.parse( readerEvent.target.result )
-
-		for ( const [ model_name, model ] of Object.entries( models ) ) {
-			const loaded_posture = pose.postures[model_name]
-
-			let mannequin_posture = {
-				'version': pose.mannequin_version,
-				'data':    dictToPosture( loaded_posture, false )
-			}
-
-			mannequin_posture.data[0] = loaded_posture.position[1]
-			let old_posture_data = postureToDict( model.posture.data, false )
-
-			try {
-				model.postureString = JSON.stringify( mannequin_posture )
-				model.body.position.x = loaded_posture.position[0]
-				model.body.position.y = loaded_posture.position[1]
-				model.body.position.z = loaded_posture.position[2]
-			} catch ( error ) {
-				model.posture.data = old_posture_data
-
-				if ( error instanceof MannequinPostureVersionError ) {
-					alert( error.message )
-				} else {
-					alert( 'The provided posture was either invalid or impossible to understand.' )
-				}
-
-				console.error( error )
-			}
-		}
-
-		renderer.render( scene, camera )
+		loadPose( YAML.parse( readerEvent.target.result ))
 	}
 }
