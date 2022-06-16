@@ -579,7 +579,9 @@ function savePosture() {
 	let yaml_posture = YAML.stringify( pose, 3, 2 )
 
 	posture_name = window.prompt( 'Chose posture name:', 'my_posture' )
-	downloadBlob( yaml_posture, `${posture_name}.wtfp.yml` )
+	if (posture_name) {
+		downloadBlob( yaml_posture, `${posture_name}.wtfp.yml` )
+	}
 }
 
 function downloadBlob( content, name ) {
