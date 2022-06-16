@@ -7,10 +7,10 @@ const BIO_CONSTRAINTS     = true,
 const rb_x    = document.getElementById( 'rb-x' ),
 	rb_y      = document.getElementById( 'rb-y' ),
 	rb_z      = document.getElementById( 'rb-z' ),
-	cb_move   = document.getElementById( 'cb-move' ),
+	cb_move   = document.getElementById( 'cb-move' )
 	// btn_save  = document.getElementById( 'btn-save' ),
-	btn_load  = document.getElementById( 'btn-load' ),
-	file_load = document.getElementById( 'file-load' )
+	// btn_load  = document.getElementById( 'btn-load' ),
+	// file_load = document.getElementById( 'file-load' )
 
 let mouse           = new THREE.Vector2(),   // Mouse 3D position
 	pressed_mouse_btn,                         // Pressed mouse buttons
@@ -218,10 +218,10 @@ function setupEventHandlers() {
 	cb_move.addEventListener( 'click', onMoveClicked )
 
 	// btn_save.addEventListener( 'click', savePosture )
-	btn_load.addEventListener( 'click', () => {
-		file_load.click()
-	} )
-	file_load.addEventListener( 'change', loadPoseFile )
+	// btn_load.addEventListener( 'click', () => {
+	// 	file_load.click()
+	// } )
+	// file_load.addEventListener( 'change', loadPoseFile )
 
 	controls.addEventListener( 'start', () => {
 		renderer.setAnimationLoop( drawFrame )
@@ -241,17 +241,22 @@ function onPageLoad() {
 	const string_url = window.location.search.substring(1)
 	const params = new URLSearchParams(string_url).entries();
 
-	let pose = { mannequin_version: 6, postures: {} } // TODO: parse mnq version
+	let pose = { postures: {} } // TODO: parse mnq version
 
-	for(const [model_name, posture_url_string] of params) {
-		let posture_str = '{"' + posture_url_string
+	for(const [param_key, param_value] of params) {
+		if (param_key === '_v') {
+			pose.mannequin_version = param_value
+			continue
+		}
+
+		let posture_str = '{"' + param_value
 			.replaceAll(':', '":[')
 			.replaceAll(';', '],"') + ']}'
 
 		let posture = JSON.parse(posture_str)
-		pose.postures[model_name] = {}
+		pose.postures[param_key] = {}
 		body_parts.forEach( part_keys => {
-			pose.postures[model_name][part_keys[0]] = posture[part_keys[1]]
+			pose.postures[param_key][part_keys[0]] = posture[part_keys[1]]
 		})
 	}
 
@@ -312,7 +317,7 @@ function deselect() {
 	gauge.parent?.remove( gauge )
 	selected_body_part?.select( false )
 	selected_body_part = undefined
-	savePosture()
+	updateUrl()
 }
 
 function onMouseDown( event ) {
@@ -620,16 +625,16 @@ function dictToPosture( posture_dict, short_ids ) {
 	return posture
 }
 
-function poseToUrlString(posture) {
-	let postures_str = {}
-	for ( const [ model_name, posture_dict ] of Object.entries( posture.postures ) ) {
+function poseToUrlString(pose) {
+	let postures_str_dict = {}
+	for ( const [ model_name, posture_dict ] of Object.entries( pose.postures ) ) {
 
 		let posture_dict_short_ids = {}		
 		body_parts.forEach( part_keys => {
 			posture_dict_short_ids[part_keys[1]] = posture_dict[part_keys[0]]
 		})
 	
-		postures_str[model_name] = JSON.stringify(posture_dict_short_ids)
+		postures_str_dict[model_name] = JSON.stringify(posture_dict_short_ids)
 			.replaceAll(',"', ';')
 			.replaceAll('"', '')
 			.replaceAll('{', '')
@@ -639,21 +644,18 @@ function poseToUrlString(posture) {
 			.replaceAll(':', '!')
 	}
 
-	return encodeURI(
-		JSON.stringify(postures_str)
+	const postures_str = JSON.stringify(postures_str_dict)
 		.replaceAll(',"', '&')
 		.replaceAll('"', '')
 		.replaceAll('{', '')
 		.replaceAll('}', '')
 		.replaceAll(':', '=')
 		.replaceAll('!', ':')
-	)
+
+	return '_v=' + pose.mannequin_version + '&' + encodeURI(postures_str)
 }
 
-function urlStringToPosturesDict(url_string) {
-}
-
-function savePosture() {
+function getCurrentPose() {
 	let postures = {}
 
 	for ( const [ model_name, model ] of Object.entries( models ) ) {
@@ -667,7 +669,7 @@ function savePosture() {
 		]
 	}
 
-	let pose = {
+	return {
 		'title':             '',
 		'aliases':           [],
 		'wtf_version':       WHAT_THE_FLOW_VERSION,
@@ -686,15 +688,21 @@ function savePosture() {
 		'comment': ''
 	}
 
-	let new_url = window.location.pathname + '?' + poseToUrlString(pose)
+}
+
+function updateUrl() {
+	let new_url = window.location.pathname + '?' + poseToUrlString(getCurrentPose())
 	window.history.pushState({}, '', new_url);
-	// let yaml_posture = YAML.stringify( pose, 3, 2 )
+}
 
-	// const posture_name = window.prompt( 'Chose posture name:', 'my_posture' )
+function savePose() {
+	let yaml_posture = YAML.stringify( getCurrentPose(), 3, 2 )
 
-	// if ( posture_name ) {
-	// 	downloadBlob( yaml_posture, `${posture_name}.wtfp.yml` )
-	// }
+	const posture_name = window.prompt( 'Chose posture name:', 'my_posture' )
+
+	if ( posture_name ) {
+		downloadBlob( yaml_posture, `${posture_name}.wtfp.yml` )
+	}
 }
 
 function downloadBlob( content, name ) {
