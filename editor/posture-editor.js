@@ -1,34 +1,35 @@
-const WHAT_THE_FLOW_VERSION = 0.1;
-	  EPSILON               = 0.00001,
-	  BIO_CONSTRAINTS       = true
+'use strict'
 
-const rb_x            = document.getElementById( 'rb-x' ),
-	  rb_y            = document.getElementById( 'rb-y' ),
-	  rb_z            = document.getElementById( 'rb-z' ),
-	  cb_move         = document.getElementById( 'cb-move' ),
-	  btn_save        = document.getElementById( 'btn-save' ),
-	  btn_load        = document.getElementById( 'btn-load' ),
-	  file_load       = document.getElementById( 'file-load' )
+const BIO_CONSTRAINTS       = true,
+	EPSILON               = 0.00001,
+	WHAT_THE_FLOW_VERSION = 0.1
 
-let mouse             = new THREE.Vector2(),   // Mouse 3D position
+const rb_x      = document.getElementById( 'rb-x' ),
+	rb_y      = document.getElementById( 'rb-y' ),
+	rb_z      = document.getElementById( 'rb-z' ),
+	cb_move   = document.getElementById( 'cb-move' ),
+	btn_save  = document.getElementById( 'btn-save' ),
+	btn_load  = document.getElementById( 'btn-load' ),
+	file_load = document.getElementById( 'file-load' )
+
+let mouse           = new THREE.Vector2(),   // Mouse 3D position
 	pressed_mouse_btn,                         // Pressed mouse buttons
-	raycaster         = new THREE.Raycaster(), // Raycaster to grab body part
-	drag_point        = new THREE.Mesh(),      // Point of grabbing
+	raycaster       = new THREE.Raycaster(), // Raycaster to grab body part
+	drag_point      = new THREE.Mesh(),      // Point of grabbing
 	selected_body_part,                        // Currently selected body part
-	mouse_interface   = false,
-	touch_interface   = false
+	touch_interface = false
 
 createScene()
 
 var controls = new THREE.OrbitControls( camera, renderer.domElement ),
-	gauge    = createGauge()
+	gauge    = createGauge(),
 	models   = {
-		'base' : new Mannequin(),
-		'flyer': new Mannequin(),
+		'base':  new Mannequin(),
+		'flyer': new Mannequin()
 	}
 
-setInitialPosition(models)
-renameModelsParts(models)
+setInitialPosition( models )
+renameModelsParts( models )
 setupEventHandlers()
 
 function createGauge() {
@@ -47,19 +48,22 @@ function createGauge() {
 		'color': 'navy'
 	} )
 
-	gauge.add( new THREE.Mesh( new THREE.TorusBufferGeometry( 10, 0.1, 8, 32, Math.PI / 2 )
-		.rotateZ( Math.PI / 4 ), gaugeMaterial )
-	)
+	gauge.add( new THREE.Mesh(
+		new THREE.TorusBufferGeometry( 10, 0.1, 8, 32, Math.PI / 2 )
+			.rotateZ( Math.PI / 4 ), gaugeMaterial
+	) )
 
-	gauge.add( new THREE.Mesh( new THREE.ConeBufferGeometry( 0.7, 3, 6 )
-		.translate( - 10, 0, 0 )
-		.rotateZ( 5 * Math.PI / 4 ), gaugeMaterial )
-	)
+	gauge.add( new THREE.Mesh(
+		new THREE.ConeBufferGeometry( 0.7, 3, 6 )
+			.translate( - 10, 0, 0 )
+			.rotateZ( 5 * Math.PI / 4 ), gaugeMaterial
+	) )
 
-	gauge.add( new THREE.Mesh( new THREE.ConeBufferGeometry( 0.7, 3, 6 )
-		.translate( 10, 0, 0 )
-		.rotateZ( 3 * Math.PI / 4 ), gaugeMaterial )
-	)
+	gauge.add( new THREE.Mesh(
+		new THREE.ConeBufferGeometry( 0.7, 3, 6 )
+			.translate( 10, 0, 0 )
+			.rotateZ( 3 * Math.PI / 4 ), gaugeMaterial
+	) )
 
 	return gauge
 }
@@ -113,10 +117,10 @@ function gaugeTexture( size = 256 ) {
 	return texture
 }
 
-function setInitialPosition(models) {
-	models.base.body.position.x  -= 15
+function setInitialPosition( models ) {
+	models.base.body.position.x -= 15
 	models.flyer.body.position.x += 15
-	models.base.body.position.y  += 4
+	models.base.body.position.y += 4
 	models.flyer.body.position.y += 4
 }
 
@@ -145,7 +149,7 @@ function renameModelsParts( models ) {
 		'r_tips'
 	]
 
-	for (let [model_name, model] of Object.entries(models)) {
+	for ( let [ model_name, model ] of Object.entries( models ) ) {
 		model.label = model_name
 		model.l_tips = model.l_fingers.tips
 		model.r_tips = model.r_fingers.tips
@@ -155,12 +159,12 @@ function renameModelsParts( models ) {
 				part.name = name
 			}
 
-			for ( var part of model[name].children[0].children[0].children ) {
+			for ( part of model[name].children[0].children[0].children ) {
 				part.name = name
 			}
 
 			if ( model[name].children[0].children[1] ) {
-				for ( var part of model[name].children[0].children[1].children ) {
+				for ( part of model[name].children[0].children[1].children ) {
 					part.name = name
 				}
 			}
@@ -267,18 +271,20 @@ function onMouseDown( event ) {
 
 	raycaster.setFromCamera( mouse, camera )
 
-	let intersects
-	Object.values(models).forEach(model => {
-		intersects = raycaster.intersectObject( model, true )
-		if ( intersects.length && ( intersects[0].object.name || intersects[0].object.parent.name ) ) {
-			onModelClicked(model, intersects)
+	let intersect
+
+	Object.values( models ).forEach( ( model ) => {
+		intersect = raycaster.intersectObject( model, true )
+
+		if ( intersect.length && ( intersect[0].object.name || intersect[0].object.parent.name ) ) {
+			onModelClicked( model, intersect )
 		}
-	});
+	} )
 
 	renderer.setAnimationLoop( drawFrame )
 }
 
-function onModelClicked(model, intersects) {
+function onModelClicked( model, intersects ) {
 	controls.enabled = false
 
 	let name = intersects[0].object.name || intersects[0].object.parent.name
@@ -387,6 +393,7 @@ function kinematic2D( joint, rotationalAngle, angle, ignoreIfPositive ) {
 	let distOriginal = mouse.distanceTo( screenPoint ),
 		oldAngle = joint[rotationalAngle]
 
+	let oldParentAngle
 	if ( joint instanceof Head ) { // Head and neck
 		oldParentAngle = joint.parentJoint[rotationalAngle]
 		relativeTurn( joint, rotationalAngle, angle / 2 )
@@ -484,7 +491,11 @@ function animate( time ) {
 		 * inv_knm = cb_move.checked && obj.name !== '';
 		 */
 	}
-	while ( joint && ! ( joint instanceof Mannequin ) && ! ( joint instanceof Pelvis ) && ! ( joint instanceof Torso ) && inv_knm )
+	while ( joint &&
+		! ( joint instanceof Mannequin ) &&
+		! ( joint instanceof Pelvis ) &&
+		! ( joint instanceof Torso ) &&
+		inv_knm )
 }
 
 function onMouseMove( event ) {
@@ -496,18 +507,16 @@ function onMouseMove( event ) {
 function userInput( event ) {
 	if ( event instanceof MouseEvent ) {
 		event.preventDefault()
-
-		mouse_interface = true
 		pressed_mouse_btn = event.buttons || 0x1
 
 		mouse.x = event.clientX / window.innerWidth * 2 - 1
 		mouse.y = - event.clientY / window.innerHeight * 2 + 1
 	}
 
-	if ( window.TouchEvent && event instanceof TouchEvent && event.touches.length == 1 ) {
+	if ( window.TouchEvent && event instanceof TouchEvent && event.touches.length === 1 ) {
 		pressed_mouse_btn = 0x1
-
 		touch_interface = true
+
 		mouse.x = event.touches[0].clientX / window.innerWidth * 2 - 1
 		mouse.y = - event.touches[0].clientY / window.innerHeight * 2 + 1
 	}
@@ -535,27 +544,37 @@ const dict_keys = [
 ]
 
 function postureToDict( posture ) {
-	posture_dict = {}
+	let posture_dict = {}
+
 	posture.forEach( ( posture, pos_index ) => {
 		posture_dict[dict_keys[pos_index]] = posture
 	} )
+
 	return posture_dict
 }
 
 function dictToPosture( posture_dict ) {
-	posture = []
+	let posture = []
+
 	dict_keys.map( ( key, index ) => {
 		posture[index] = posture_dict[key]
 	} )
+
 	return posture
 }
 
 function savePosture() {
 	let postures = {}
-	for (const [model_name, model] of Object.entries(models)) {
-		postures[model_name] = postureToDict(model.posture.data)
+
+	for ( const [ model_name, model ] of Object.entries( models ) ) {
+		postures[model_name] = postureToDict( model.posture.data )
 		const pos = model.body.position
-		postures[model_name].position = [ +(pos.x).toFixed(1), +(pos.y).toFixed(1), +(pos.z).toFixed(1) ]
+
+		postures[model_name].position = [
+			Number( pos.x.toFixed( 1 ) ),
+			Number( pos.y.toFixed( 1 ) ),
+			Number( pos.z.toFixed( 1 ) )
+		]
 	}
 
 	let pose = {
@@ -573,14 +592,15 @@ function savePosture() {
 			'pos': [ 0, 0, 0 ],
 			'rot': [ 0, 0, 0 ]
 		},
-		'postures': postures,
+		postures,
 		'comment': ''
 	}
 
 	let yaml_posture = YAML.stringify( pose, 3, 2 )
 
-	posture_name = window.prompt( 'Chose posture name:', 'my_posture' )
-	if (posture_name) {
+	const posture_name = window.prompt( 'Chose posture name:', 'my_posture' )
+
+	if ( posture_name ) {
 		downloadBlob( yaml_posture, `${posture_name}.wtfp.yml` )
 	}
 }
@@ -617,7 +637,7 @@ function loadPosture( file_load ) {
 		alert( 'Wrong file extension.' )
 
 		return
-	} else if ( file.type != 'application/x-yaml' ) {
+	} else if ( file.type !== 'application/x-yaml' ) {
 		alert( 'Wrong file type.' )
 
 		return
@@ -632,16 +652,17 @@ function loadPosture( file_load ) {
 	reader.onload = ( readerEvent ) => {
 		let pose = YAML.parse( readerEvent.target.result )
 
-		for (const [model_name, model] of Object.entries(models)) {
+		for ( const [ model_name, model ] of Object.entries( models ) ) {
 			const loaded_posture = pose.postures[model_name]
 
 			let mannequin_posture = {
 				'version': pose.mannequin_version,
-				'data':    dictToPosture(loaded_posture)
+				'data':    dictToPosture( loaded_posture )
 			}
+
 			mannequin_posture.data[0] = loaded_posture.position[1]
 
-			let old_posture_data = postureToDict(model.posture.data)
+			let old_posture_data = postureToDict( model.posture.data )
 
 			try {
 				model.postureString = JSON.stringify( mannequin_posture )

@@ -2,7 +2,8 @@ env:
   browser: true
   es2021: true
 extends:
-  - 'eslint:all'
+  # - 'eslint:all'
+  - 'eslint:recommended'
 parserOptions:
   ecmaVersion: 12
 globals:
@@ -13,7 +14,6 @@ rules:
   strict:               [ error, global ]
   no-use-before-define: [ error, { classes: true, functions: false, variables: false } ]
   quotes:               [ error, single, { allowTemplateLiterals: true } ]
-  camelcase:            [ error, { properties: never } ]
 
   # Disabled
   no-plusplus:            off
@@ -22,6 +22,7 @@ rules:
   no-ternary:             off
 
   # Disabled but might be interesting
+  no-undef:               off
   max-statements:         off
   max-lines-per-function: off
   id-length:              off
@@ -49,8 +50,7 @@ rules:
   space-unary-ops:       [ error, { words: true, nonwords: true } ]
   space-before-blocks:   [ error, always ]
   space-before-function-paren: [ error, never ]
-  space-in-brackets:     [ error, always ]
-  space-after-keywords:  [ error, always ]
+  keyword-spacing:       [ error, { before: true, after: true } ]
   space-in-parens:       [ error, always ]
   array-bracket-spacing: [ error, always ]
   object-curly-spacing:  [ error, always ]
@@ -68,3 +68,4 @@ rules:
   dot-location: [ error, property ]
   key-spacing:  [ error, { align: value } ]
   semi:  [ error, never ]
+  no-unused-vars: [ error, { args: none } ]
