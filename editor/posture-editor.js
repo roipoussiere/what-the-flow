@@ -118,10 +118,39 @@ function gaugeTexture( size = 256 ) {
 }
 
 function setInitialPosition( models ) {
-	models.base.body.position.x -= 15
-	models.flyer.body.position.x += 15
-	models.base.body.position.y += 4
-	models.flyer.body.position.y += 4
+	// base
+	models.base.body.position.y = -25
+
+	models.base.body.bend = 0
+	models.base.body.tilt = -90
+	models.base.body.turn = 0
+
+	models.base.l_leg.turn  = -3
+	models.base.l_leg.raise = 90
+	models.base.r_leg.turn  = -3
+	models.base.r_leg.raise = 90
+
+	models.base.l_arm.raise = -10
+	models.base.r_arm.raise = -10
+
+	models.base.l_elbow.bend = 11
+	models.base.r_elbow.bend = 11
+
+	models.base.l_wrist.turn = -90
+	models.base.r_wrist.turn = -90
+	models.base.l_wrist.tilt = -10
+	models.base.r_wrist.tilt = 10
+
+	// flyer
+	models.flyer.body.position.x = 3
+	models.flyer.body.position.y = 6
+
+	models.flyer.body.bend = 90
+	models.flyer.body.tilt = -90
+	models.flyer.body.turn = 180
+
+	models.flyer.l_ankle.bend = -55
+	models.flyer.r_ankle.bend = -55
 }
 
 function renameModelsParts( models ) {
