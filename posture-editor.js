@@ -217,7 +217,7 @@ function setupEventHandlers() {
 	rb_y.addEventListener( 'click', processXyz )
 	cb_move.addEventListener( 'click', onMoveClicked )
 
-	// btn_save.addEventListener( 'click', savePosture )
+	// btn_save.addEventListener( 'click', savePose )
 	// btn_load.addEventListener( 'click', () => {
 	// 	file_load.click()
 	// } )
@@ -734,7 +734,6 @@ function loadPose( pose ) {
 	if ( ! pose || ! pose.postures || Object.keys(pose.postures).length === 0 ) {
 		models = initModels()
 	} else {
-		models = {}
 		for ( const [ model_name, loaded_posture ] of Object.entries( pose.postures ) ) {
 
 			let mannequin_posture = {
@@ -744,14 +743,10 @@ function loadPose( pose ) {
 
 			mannequin_posture.data[0] = loaded_posture.position[1]
 
-			try {
-				let mannequin = new Mannequin()	
-				mannequin.postureString = JSON.stringify( mannequin_posture )
-				mannequin.body.position.x = loaded_posture.position[0]
-				mannequin.body.position.y = loaded_posture.position[1]
-				mannequin.body.position.z = loaded_posture.position[2]
+			let mannequin = new Mannequin()
 
-				models[model_name] = mannequin
+			try {
+				mannequin.postureString = JSON.stringify( mannequin_posture )
 			} catch ( error ) {
 				if ( error instanceof MannequinPostureVersionError ) {
 					alert( error.message )
@@ -760,8 +755,21 @@ function loadPose( pose ) {
 				}
 
 				console.error( error )
+				mannequin = null
+				continue
 			}
+
+			if (model_name in models) {
+				models[model_name].removeFromParent ()
+			}
+
+			mannequin.body.position.x = loaded_posture.position[0]
+			mannequin.body.position.y = loaded_posture.position[1]
+			mannequin.body.position.z = loaded_posture.position[2]		
+
+			models[model_name] = mannequin
 		}
+
 	}
 
 	renameModelsParts( models )
