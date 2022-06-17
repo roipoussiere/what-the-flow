@@ -10,6 +10,7 @@
 		<script src="libs/OrbitControls.min.js"></script>
 		<script src="libs/mannequin.js"></script>
 		<script src="libs/yaml.min.js"></script>
+		<script type="module" src="libs/qr-creator.min.js"></script>
 	</head>
 
 	<body>
@@ -26,12 +27,17 @@
 			<input id="cb-move" type="checkbox"/>
 			<label class="icon" for="cb-move"></label>
 
+			<input id="btn-share" type="button"/>
+			<label class="icon" for="btn-share"></label>
+
 			<input id="btn-save" type="button"/>
 			<label class="icon dev" for="btn-save"></label>
 
 			<input id="btn-load" type="button"/>
 			<label class="icon dev" for="btn-load"></label>
 			<input id="file-load" type="file" name="name" style="display: none;" />
+
+			<div id="qr-code"></div>
 		</div>
 
 		<script src="posture-editor.js"></script>

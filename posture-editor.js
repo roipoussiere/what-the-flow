@@ -8,15 +8,17 @@ const rb_x    = document.getElementById( 'rb-x' ),
 	rb_y      = document.getElementById( 'rb-y' ),
 	rb_z      = document.getElementById( 'rb-z' ),
 	cb_move   = document.getElementById( 'cb-move' ),
+	btn_share = document.getElementById( 'btn-share' ),
 	btn_save  = document.getElementById( 'btn-save' ),
 	btn_load  = document.getElementById( 'btn-load' ),
-	file_load = document.getElementById( 'file-load' )
+	file_load = document.getElementById( 'file-load' ),
+	qr_code   = document.getElementById( 'qr-code' )
 
 let mouse           = new THREE.Vector2(),   // Mouse 3D position
-	pressed_mouse_btn,                         // Pressed mouse buttons
+	pressed_mouse_btn,                       // Pressed mouse buttons
 	raycaster       = new THREE.Raycaster(), // Raycaster to grab body part
 	drag_point      = new THREE.Mesh(),      // Point of grabbing
-	selected_body_part,                        // Currently selected body part
+	selected_body_part,                      // Currently selected body part
 	touch_interface = false
 
 createScene()
@@ -219,6 +221,11 @@ function setupEventHandlers() {
 	rb_y.addEventListener( 'click', processXyz )
 	cb_move.addEventListener( 'click', onMoveClicked )
 
+	btn_share.addEventListener( 'click', onShareBtnClicked )
+	qr_code.addEventListener( 'click', () => {
+		qr_code.style.display = 'none'
+		qr_code.innerHTML = ''
+	} )
 	btn_save.addEventListener( 'click', savePose )
 	btn_load.addEventListener( 'click', () => {
 		file_load.click()
@@ -263,6 +270,26 @@ function onPageLoad() {
 	}
 
 	loadPose(pose)
+}
+
+function onShareBtnClicked() {
+	if (qr_code.style.display === 'block') {
+		qr_code.style.display = 'none';
+		qr_code.innerHTML = ''
+		return
+	}
+
+	const qrcode_size = Math.round(Math.min(window.innerWidth, window.innerHeight) * 0.8)
+	qr_code.style.marginLeft = `${ Math.round( - (qrcode_size / 2)) }px`
+	QrCreator.render({
+		text: window.location.href,
+		radius: 0.2,
+		ecLevel: 'L', // L, M, Q, H
+		fill: '#333', // foreground color
+		background: null, // color or null for transparent
+		size: qrcode_size // in pixels
+	  }, qr_code);
+	  qr_code.style.display = 'block'
 }
 
 function onKeyDown(event) {

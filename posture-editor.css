@@ -33,16 +33,26 @@
 	background-color: #ccc;
 }
 
-#rb-x     + .icon      { background-position:    0px 0px; }
-#rb-y     + .icon      { background-position:  -64px 0px; }
-#rb-z     + .icon      { background-position: -128px 0px; }
-#cb-move  + .icon      { background-position: -192px 0px; }
-#rb-x     + .icon.move { background-position: -256px 0px; }
-#rb-y     + .icon.move { background-position: -320px 0px; }
-#rb-z     + .icon.move { background-position: -384px 0px; }
-#btn-save + .icon      { background-position: -448px 0px; }
-#btn-load + .icon      { background-position: -512px 0px; }
+#rb-x      + .icon      { background-position:    0px 0px; }
+#rb-y      + .icon      { background-position:  -64px 0px; }
+#rb-z      + .icon      { background-position: -128px 0px; }
+#cb-move   + .icon      { background-position: -192px 0px; }
+#rb-x      + .icon.move { background-position: -256px 0px; }
+#rb-y      + .icon.move { background-position: -320px 0px; }
+#rb-z      + .icon.move { background-position: -384px 0px; }
+#btn-share + .icon      { background-position: -576px 0px; }
+#btn-save  + .icon      { background-position: -448px 0px; }
+#btn-load  + .icon      { background-position: -512px 0px; }
 
 .dev {
 	display: none;
+}
+
+#qr-code {
+	display: none;
+	position: fixed;
+	top: 5%;
+	left: 50% ;
+	padding: 3%;
+	background-color: #ddd;
 }
