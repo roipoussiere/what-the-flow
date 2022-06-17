@@ -42,3 +42,7 @@
 #rb-z     + .icon.move { background-position: -384px 0px; }
 #btn-save + .icon      { background-position: -448px 0px; }
 #btn-load + .icon      { background-position: -512px 0px; }
+
+.dev {
+	display: none;
+}

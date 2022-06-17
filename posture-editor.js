@@ -212,6 +212,8 @@ function setupEventHandlers() {
 	document.addEventListener( 'touchcancel', onMouseUp )
 	document.addEventListener( 'touchmove', onMouseMove )
 
+	document.addEventListener('keydown', onKeyDown )
+
 	rb_z.addEventListener( 'click', processXyz )
 	rb_x.addEventListener( 'click', processXyz )
 	rb_y.addEventListener( 'click', processXyz )
@@ -261,6 +263,18 @@ function onPageLoad() {
 	}
 
 	loadPose(pose)
+}
+
+function onKeyDown(event) {
+	if (event.keyCode === 68) {
+		Array.from(document.getElementsByClassName('dev')).forEach(node => {
+			toggleNode(node)
+		})
+	}
+}
+
+function toggleNode(node) {
+	node.style.display = node.style.display === 'none' ? 'block' : 'none'
 }
 
 function onMoveClicked( event ) {
